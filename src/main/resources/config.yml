@@ -9,7 +9,7 @@ modules:
   shop: true
   auctions: true
   orders: true
-  crates: false
+  crates: true
   settings: true
   custom-tools: false
 
