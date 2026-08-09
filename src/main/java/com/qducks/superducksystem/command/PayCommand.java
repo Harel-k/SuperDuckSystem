@@ -4,6 +4,7 @@ import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
 import com.qducks.superducksystem.economy.EconomyService;
 import com.qducks.superducksystem.message.MessageService;
+import com.qducks.superducksystem.settings.PlayerSetting;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -82,8 +83,10 @@ public final class PayCommand implements CommandExecutor, TabCompleter {
                         String formatted = plugin.economy().formatter().format(CurrencyType.MONEY, result.amount());
                         messages.send(player, "economy.paid", "<green>You paid <white>%player%</white> %amount%.</green>",
                                 Map.of("player", target.getName(), "amount", formatted));
-                        messages.send(target, "economy.received", "<green>You received %amount% from <white>%player%</white>.</green>",
-                                Map.of("player", player.getName(), "amount", formatted));
+                        if (plugin.settings().get(target.getUniqueId(), PlayerSetting.PAY_NOTIFICATIONS)) {
+                            messages.send(target, "economy.received", "<green>You received %amount% from <white>%player%</white>.</green>",
+                                    Map.of("player", player.getName(), "amount", formatted));
+                        }
                     }));
         } catch (IllegalArgumentException exception) {
             messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
