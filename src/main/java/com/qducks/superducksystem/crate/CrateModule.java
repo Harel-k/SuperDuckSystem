@@ -10,9 +10,9 @@ public final class CrateModule implements SuperDuckModule {
     private final CrateService crateService;
     private final CrateLocationService locationService;
 
-    public CrateModule(SuperDuckSystem plugin) {
+    public CrateModule(SuperDuckSystem plugin, KeyService keyService) {
         this.plugin = plugin;
-        this.keyService = new KeyService(plugin);
+        this.keyService = keyService;
         this.crateService = new CrateService(plugin, keyService);
         this.locationService = new CrateLocationService(plugin, crateService, keyService);
     }
