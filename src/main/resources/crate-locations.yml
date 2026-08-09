@@ -1,0 +1,165 @@
+# Physical spawn crate blocks
+#
+# Set enabled: true after entering the exact BLOCK coordinates for a crate.
+# Right-clicking that block opens a loot preview showing the player's key count and an Open button.
+# A TextDisplay nametag is spawned above every enabled crate block.
+# Run /sds reload after editing this file to refresh locations and nametags.
+
+block-menu:
+  title: "<gold><bold>%crate%</bold></gold>"
+  rows: 6
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  reward-slots:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+    - 24
+    - 25
+    - 26
+    - 27
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - 33
+    - 34
+    - 35
+    - 36
+    - 37
+    - 38
+    - 39
+    - 40
+    - 41
+    - 42
+    - 43
+    - 44
+  key-info:
+    slot: 46
+    material: TRIPWIRE_HOOK
+    name: "<yellow><bold>%key%</bold></yellow>"
+    lore:
+      - "<gray>You have:</gray> <white>%keys%</white>"
+      - "<gray>This crate uses one key per opening.</gray>"
+  open:
+    slot: 49
+    name: "<green><bold>OPEN %crate%</bold></green>"
+    lore:
+      - "<gray>Required:</gray> <white>1x %key%</white>"
+      - "<gray>You have:</gray> <white>%keys%</white>"
+      - ""
+      - "%open_status%"
+  close:
+    slot: 53
+    material: BARRIER
+    name: "<red>Close</red>"
+
+hologram-defaults:
+  enabled: true
+  height: 1.75
+  shadowed: true
+  see-through: false
+  default-background: false
+  line-width: 220
+  view-range: 32.0
+  lines:
+    - "<yellow><bold>%crate%</bold></yellow>"
+    - "<gray>Right-click to view rewards</gray>"
+
+# You can add more entries or even place multiple blocks for the same crate.
+# "expected-block" is optional. If set, SuperDuckSystem warns in console when
+# the configured coordinate is not that material, but the coordinate still works.
+locations:
+  starter:
+    enabled: false
+    crate: starter
+    world: spawn
+    x: 0
+    y: 64
+    z: 0
+    expected-block: BARREL
+
+  common:
+    enabled: false
+    crate: common
+    world: spawn
+    x: 0
+    y: 64
+    z: 0
+    expected-block: CHEST
+
+  rare:
+    enabled: false
+    crate: rare
+    world: spawn
+    x: 0
+    y: 64
+    z: 0
+    expected-block: BLUE_SHULKER_BOX
+
+  epic:
+    enabled: false
+    crate: epic
+    world: spawn
+    x: 0
+    y: 64
+    z: 0
+    expected-block: PURPLE_SHULKER_BOX
+
+  legendary:
+    enabled: false
+    crate: legendary
+    world: spawn
+    x: 0
+    y: 64
+    z: 0
+    expected-block: YELLOW_SHULKER_BOX
+
+  duck:
+    enabled: false
+    crate: duck
+    world: spawn
+    x: 0
+    y: 64
+    z: 0
+    expected-block: CHEST
+
+# Per-location hologram override example:
+#  special-duck-crate:
+#    enabled: true
+#    crate: duck
+#    world: spawn
+#    x: 25
+#    y: 70
+#    z: -12
+#    expected-block: CHEST
+#    hologram:
+#      enabled: true
+#      height: 2.0
+#      lines:
+#        - "<yellow><bold>DUCK CRATE</bold></yellow>"
+#        - "<aqua>Right-click!</aqua>"
