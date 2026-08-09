@@ -4,7 +4,9 @@ import com.qducks.superducksystem.command.SuperDuckCommand;
 import com.qducks.superducksystem.config.ConfigManager;
 import com.qducks.superducksystem.database.DatabaseManager;
 import com.qducks.superducksystem.integration.IntegrationManager;
+import com.qducks.superducksystem.item.CustomItemService;
 import com.qducks.superducksystem.module.ModuleManager;
+import com.qducks.superducksystem.player.PlayerProfileListener;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -13,6 +15,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private DatabaseManager databaseManager;
     private IntegrationManager integrationManager;
     private ModuleManager moduleManager;
+    private CustomItemService customItemService;
 
     @Override
     public void onEnable() {
@@ -25,8 +28,12 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
 
+        this.customItemService = new CustomItemService(this);
+
         this.moduleManager = new ModuleManager(this);
         this.moduleManager.loadConfiguredModules();
+
+        getServer().getPluginManager().registerEvents(new PlayerProfileListener(this), this);
 
         PluginCommand command = getCommand("superduck");
         if (command == null) {
@@ -63,5 +70,9 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public ModuleManager modules() {
         return moduleManager;
+    }
+
+    public CustomItemService customItems() {
+        return customItemService;
     }
 }
