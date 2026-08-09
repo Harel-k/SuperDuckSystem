@@ -7,9 +7,88 @@ creation:
   maximum-amount: 1000000
   default-amount-input: "64"
   default-price-input: "100"
+  # Materials listed here will not appear in the order item picker.
+  blocked-materials: []
+  item-picker:
+    title: "<aqua><bold>Select Order Item</bold></aqua> <gray>%page%/%pages%</gray>"
+    rows: 6
+    page-size: 45
+    filler:
+      enabled: true
+      material: BLACK_STAINED_GLASS_PANE
+      name: " "
+    content-slots:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+      - 11
+      - 12
+      - 13
+      - 14
+      - 15
+      - 16
+      - 17
+      - 18
+      - 19
+      - 20
+      - 21
+      - 22
+      - 23
+      - 24
+      - 25
+      - 26
+      - 27
+      - 28
+      - 29
+      - 30
+      - 31
+      - 32
+      - 33
+      - 34
+      - 35
+      - 36
+      - 37
+      - 38
+      - 39
+      - 40
+      - 41
+      - 42
+      - 43
+      - 44
+    previous:
+      slot: 45
+      material: ARROW
+      name: "<yellow>Previous Page</yellow>"
+    search:
+      slot: 46
+      material: OAK_SIGN
+      name: "<aqua><bold>Search Items</bold></aqua>"
+      lore:
+        - "<gray>Current:</gray> <white>%search%</white>"
+        - "<yellow>Click and type an item name.</yellow>"
+    clear-search:
+      slot: 48
+      material: MILK_BUCKET
+      name: "<red>Clear Search</red>"
+    close:
+      slot: 49
+      material: BARRIER
+      name: "<red>Back to My Orders</red>"
+    next:
+      slot: 53
+      material: ARROW
+      name: "<yellow>Next Page</yellow>"
 
 limits:
-  # Higher values can be granted with superduck.order.slots.<number>
+  # Rank values are assigned from config.yml. Higher numeric permission nodes still work.
   default-slots: 3
 
 menu:
@@ -81,7 +160,7 @@ menu:
     material: CHEST
     name: "<gold><bold>My Orders</bold></gold>"
     lore:
-      - "<gray>View orders and claim delivered items.</gray>"
+      - "<gray>View orders, free slots and delivered items.</gray>"
   refresh:
     slot: 49
     material: SUNFLOWER
@@ -98,7 +177,7 @@ menu:
     material: EMERALD
     name: "<green><bold>Create Order</bold></green>"
     lore:
-      - "<gray>Hold the item you want to order.</gray>"
+      - "<gray>Choose from the searchable item catalog.</gray>"
       - "<yellow>Click to continue.</yellow>"
   clear-search:
     slot: 52
@@ -126,7 +205,7 @@ confirmation:
   fill-title: "<green><bold>Fill Order</bold></green>"
 
 my-orders:
-  title: "<gold><bold>My Orders</bold></gold>"
+  title: "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray>"
   rows: 6
   filler:
     enabled: true
@@ -169,6 +248,12 @@ my-orders:
     - 33
     - 34
     - 35
+  empty-slot:
+    material: LIME_STAINED_GLASS_PANE
+    name: "<green><bold>+ Create Order</bold></green>"
+    lore:
+      - "<gray>Used slots:</gray> <white>%used%/%limit%</white>"
+      - "<yellow>Click to choose an item.</yellow>"
   back:
     slot: 49
     material: BARRIER
