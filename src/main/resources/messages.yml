@@ -47,3 +47,8 @@ ducks:
 settings:
   saved: "<green>Your settings were saved.</green>"
   failed: "<red>Could not save your settings.</red>"
+
+sell:
+  nothing: "<red>There are no sellable items in the menu.</red>"
+  failed: "<red>The sale failed, so your items were returned.</red>"
+  success: "<green>Sold <white>%items%</white> items for %amount%.</green>"
