@@ -1,0 +1,77 @@
+# SuperDuckSystem custom items and Duck tool configuration
+# Everything here can be changed without recompiling the plugin.
+
+items:
+  duck_pickaxe:
+    material: DIAMOND_PICKAXE
+    name: "<aqua><bold>Duck Pickaxe</bold></aqua>"
+    lore:
+      - "<gray>Mines a <white>3x3</white> area.</gray>"
+      - "<dark_gray>SuperDuck item</dark_gray>"
+    enchantments:
+      efficiency: 5
+      unbreaking: 3
+    unbreakable: false
+
+  duck_shovel:
+    material: DIAMOND_SHOVEL
+    name: "<yellow><bold>Duck Shovel</bold></yellow>"
+    lore:
+      - "<gray>Digs a <white>3x3</white> area.</gray>"
+      - "<dark_gray>SuperDuck item</dark_gray>"
+    enchantments:
+      efficiency: 5
+      unbreaking: 3
+    unbreakable: false
+
+  duck_axe:
+    material: DIAMOND_AXE
+    name: "<green><bold>Duck Axe</bold></green>"
+    lore:
+      - "<gray>Fells connected tree logs.</gray>"
+      - "<dark_gray>SuperDuck item</dark_gray>"
+    enchantments:
+      efficiency: 5
+      unbreaking: 3
+    unbreakable: false
+
+tools:
+  duck_pickaxe:
+    enabled: true
+    width: 3
+    height: 3
+    depth: 1
+    max-extra-blocks: 8
+    # Empty = automatically allow normal pickaxe-mineable stone/ore style blocks.
+    allowed-blocks: []
+    blocked-blocks:
+      - BEDROCK
+      - BARRIER
+      - END_PORTAL_FRAME
+
+  duck_shovel:
+    enabled: true
+    width: 3
+    height: 3
+    depth: 1
+    max-extra-blocks: 8
+    # Empty = automatically allow dirt/sand/gravel/snow/clay style blocks.
+    allowed-blocks: []
+    blocked-blocks:
+      - BEDROCK
+      - BARRIER
+
+  duck_axe:
+    enabled: true
+    tree-vein-enabled: true
+    max-blocks: 256
+    # Maximum cube distance from the first broken log. Stops giant log structures being deleted.
+    max-radius: 16
+    include-wood-blocks: true
+    include-stems: true
+    allowed-blocks: []
+
+safety:
+  # Extra blocks are broken through Player#breakBlock, so WorldGuard/CoreProtect/other
+  # BlockBreakEvent protection plugins get a chance to cancel every individual block.
+  respect-block-break-events: true
