@@ -1,0 +1,175 @@
+# SuperDuckSystem Buy Orders configuration
+# Players create BUY orders. The entire final cost is escrowed immediately.
+
+creation:
+  minimum-price-each: "1"
+  maximum-price-each: "1000000000000"
+  maximum-amount: 1000000
+  default-amount-input: "64"
+  default-price-input: "100"
+
+limits:
+  # Higher values can be granted with superduck.order.slots.<number>
+  default-slots: 3
+
+menu:
+  title: "<aqua><bold>Buy Orders</bold></aqua> <gray>%page%/%pages%</gray>"
+  rows: 6
+  page-size: 36
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  content-slots:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+    - 24
+    - 25
+    - 26
+    - 27
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - 33
+    - 34
+    - 35
+  listing-lore:
+    - ""
+    - "<gray>Buyer:</gray> <white>%buyer%</white>"
+    - "<gray>Price each:</gray> <green>%price_each%</green>"
+    - "<gray>Remaining:</gray> <white>%remaining% / %total%</white>"
+    - "<gray>Remaining value:</gray> <green>%remaining_value%</green>"
+    - ""
+    - "<yellow>Click to fill this order.</yellow>"
+  previous:
+    slot: 45
+    material: ARROW
+    name: "<yellow>Previous Page</yellow>"
+  search:
+    slot: 46
+    material: OAK_SIGN
+    name: "<aqua><bold>Search</bold></aqua>"
+    lore:
+      - "<gray>Current:</gray> <white>%search%</white>"
+      - "<yellow>Click to search.</yellow>"
+  my-orders:
+    slot: 47
+    material: CHEST
+    name: "<gold><bold>My Orders</bold></gold>"
+    lore:
+      - "<gray>View orders and claim delivered items.</gray>"
+  refresh:
+    slot: 49
+    material: SUNFLOWER
+    name: "<green><bold>Refresh</bold></green>"
+  sort:
+    slot: 50
+    material: HOPPER
+    name: "<yellow><bold>Sort</bold></yellow>"
+    lore:
+      - "<gray>Current:</gray> <white>%sort%</white>"
+      - "<yellow>Click to change.</yellow>"
+  create:
+    slot: 51
+    material: EMERALD
+    name: "<green><bold>Create Order</bold></green>"
+    lore:
+      - "<gray>Hold the item you want to order.</gray>"
+      - "<yellow>Click to continue.</yellow>"
+  clear-search:
+    slot: 52
+    material: MILK_BUCKET
+    name: "<red>Clear Search</red>"
+  next:
+    slot: 53
+    material: ARROW
+    name: "<yellow>Next Page</yellow>"
+
+confirmation:
+  rows: 3
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  item-slot: 13
+  confirm-slot: 11
+  cancel-slot: 15
+  confirm-material: LIME_CONCRETE
+  cancel-material: RED_CONCRETE
+  confirm-name: "<green><bold>Confirm</bold></green>"
+  cancel-name: "<red><bold>Cancel</bold></red>"
+  create-title: "<aqua><bold>Confirm Order</bold></aqua>"
+  fill-title: "<green><bold>Fill Order</bold></green>"
+
+my-orders:
+  title: "<gold><bold>My Orders</bold></gold>"
+  rows: 6
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  content-slots:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+    - 24
+    - 25
+    - 26
+    - 27
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - 33
+    - 34
+    - 35
+  back:
+    slot: 49
+    material: BARRIER
+    name: "<red>Back</red>"
