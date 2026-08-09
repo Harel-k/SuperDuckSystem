@@ -23,6 +23,10 @@ public final class DailyCommand implements CommandExecutor {
             sender.sendRichMessage("<red>This command can only be used by players.</red>");
             return true;
         }
+        if (plugin.state().maintenance("rewards")) {
+            player.sendRichMessage("<red>Rewards are temporarily in maintenance mode.</red>");
+            return true;
+        }
         if (args.length != 0) {
             player.sendRichMessage("<red>Usage: /daily</red>");
             return true;
@@ -32,17 +36,16 @@ public final class DailyCommand implements CommandExecutor {
             if (error != null) {
                 Throwable cause = unwrap(error);
                 if (cause instanceof RewardService.DailyCooldownException cooldown) {
-                    player.sendRichMessage("<yellow>Your next daily reward is available in <white>"
-                            + RewardService.formatDuration(cooldown.remainingMillis()) + "</white>.</yellow>");
+                    player.sendRichMessage("<yellow>Your next daily reward is available in <white>" + RewardService.formatDuration(cooldown.remainingMillis()) + "</white>.</yellow>");
+                } else if (cause instanceof com.qducks.superducksystem.economy.EconomyService.ReadOnlyException) {
+                    player.sendRichMessage("<red>Rewards are temporarily frozen while the server economy is in read-only mode.</red>");
                 } else {
                     player.sendRichMessage("<red>Could not claim your daily reward: <white>" + escape(message(cause)) + "</white></red>");
                 }
                 return;
             }
             player.sendRichMessage("<green><bold>Daily Reward Claimed!</bold></green> <gray>Streak:</gray> <white>" + claim.streak() + "</white>");
-            for (String reward : claim.rewards()) {
-                player.sendRichMessage("<dark_gray>•</dark_gray> <yellow>" + escape(reward) + "</yellow>");
-            }
+            for (String reward : claim.rewards()) player.sendRichMessage("<dark_gray>•</dark_gray> <yellow>" + escape(reward) + "</yellow>");
         }));
         return true;
     }
@@ -52,12 +55,6 @@ public final class DailyCommand implements CommandExecutor {
         while (current.getCause() != null && current.getCause() != current) current = current.getCause();
         return current;
     }
-
-    private String message(Throwable throwable) {
-        return throwable.getMessage() == null ? throwable.getClass().getSimpleName() : throwable.getMessage();
-    }
-
-    private String escape(String value) {
-        return value == null ? "" : value.replace("<", "\\<");
-    }
+    private String message(Throwable throwable) { return throwable.getMessage() == null ? throwable.getClass().getSimpleName() : throwable.getMessage(); }
+    private String escape(String value) { return value == null ? "" : value.replace("<", "\\<"); }
 }
