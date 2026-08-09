@@ -1,0 +1,78 @@
+# SuperDuckSystem rewards
+# Reward types: MONEY, DUCKS, ITEM, KEY, CUSTOM_ITEM
+
+daily:
+  enabled: true
+  cooldown-hours: 24
+  # If a player waits longer than this, their streak restarts at 1.
+  streak-reset-hours: 48
+  base-rewards:
+    - type: MONEY
+      amount: "1000"
+    - type: ITEM
+      material: COOKED_BEEF
+      amount: 8
+  # Optional extra rewards for exact streak days.
+  streak-bonuses:
+    "3":
+      - type: DUCKS
+        amount: "2"
+    "7":
+      - type: KEY
+        key: rare
+        amount: 1
+
+playtime:
+  menu:
+    title: "<aqua><bold>Playtime Rewards</bold></aqua>"
+    rows: 6
+    filler:
+      enabled: true
+      material: BLACK_STAINED_GLASS_PANE
+      name: " "
+    close:
+      slot: 49
+      material: BARRIER
+      name: "<red>Close</red>"
+  milestones:
+    starter:
+      minutes: 30
+      slot: 10
+      icon: IRON_INGOT
+      name: "<green><bold>30 Minute Reward</bold></green>"
+      rewards:
+        - type: MONEY
+          amount: "1500"
+        - type: ITEM
+          material: IRON_INGOT
+          amount: 8
+    one_hour:
+      minutes: 60
+      slot: 12
+      icon: GOLD_INGOT
+      name: "<yellow><bold>1 Hour Reward</bold></yellow>"
+      rewards:
+        - type: MONEY
+          amount: "3000"
+        - type: DUCKS
+          amount: "2"
+    three_hours:
+      minutes: 180
+      slot: 14
+      icon: DIAMOND
+      name: "<aqua><bold>3 Hour Reward</bold></aqua>"
+      rewards:
+        - type: KEY
+          key: rare
+          amount: 1
+    ten_hours:
+      minutes: 600
+      slot: 16
+      icon: FEATHER
+      name: "<gold><bold>10 Hour Reward</bold></gold>"
+      rewards:
+        - type: DUCKS
+          amount: "10"
+        - type: KEY
+          key: epic
+          amount: 1
