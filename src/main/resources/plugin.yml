@@ -76,74 +76,64 @@ commands:
     usage: /leaderboard [money|ducks|kills|playtime|crates]
     aliases: [lb, top]
     permission: superduck.leaderboard
+  daily:
+    description: Claim your daily reward
+    usage: /daily
+    permission: superduck.daily
+  rewards:
+    description: Open your playtime rewards
+    usage: /rewards
+    aliases: [playtimerewards]
+    permission: superduck.rewards
 
 permissions:
   superduck.command:
-    description: Use /superduck
     default: true
   superduck.balance:
-    description: View your own balance
     default: true
   superduck.balance.others:
-    description: View other players' balances
     default: op
   superduck.baltop:
-    description: View the balance leaderboard
     default: true
   superduck.ducks:
-    description: View your own Ducks
     default: true
   superduck.ducks.others:
-    description: View other players' Ducks
     default: op
   superduck.pay:
-    description: Pay another player
     default: true
   superduck.settings:
-    description: Open your player settings
     default: true
   superduck.shop:
-    description: Open the server shop
     default: true
   superduck.sell:
-    description: Open the sell menu
     default: true
   superduck.auction:
-    description: Use the Auction House
     default: true
   superduck.auction.slots.3:
-    description: Allow three active auction listings
     default: true
   superduck.order:
-    description: Use Buy Orders
     default: true
   superduck.order.slots.3:
-    description: Allow three active buy orders
     default: true
   superduck.key:
-    description: View digital keys and playtime progress
     default: true
   superduck.crates:
-    description: Browse and open crates
     default: true
   superduck.stats:
-    description: View player stats
     default: true
   superduck.leaderboard:
-    description: View leaderboards
+    default: true
+  superduck.daily:
+    default: true
+  superduck.rewards:
     default: true
   superduck.admin.keys:
-    description: Grant digital crate keys
     default: op
   superduck.admin.items:
-    description: Give configured SuperDuck custom items
     default: op
   superduck.admin.economy:
-    description: Manage player money and Ducks
     default: op
   superduck.admin.status:
-    description: View SuperDuckSystem status
     default: op
   superduck.admin.reload:
-    description: Reload SuperDuckSystem configuration
     default: op
