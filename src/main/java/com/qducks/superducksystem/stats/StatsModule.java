@@ -3,6 +3,7 @@ package com.qducks.superducksystem.stats;
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.module.SuperDuckModule;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
 
 public final class StatsModule implements SuperDuckModule {
     private final SuperDuckSystem plugin;
@@ -35,6 +36,11 @@ public final class StatsModule implements SuperDuckModule {
 
     @Override
     public void disable() {
-        plugin.getLogger().info("Stats/leaderboards module disabled.");
+        // PlayerQuitEvent is not guaranteed to fire for every player during plugin/server shutdown.
+        // Queue the final session playtime before DatabaseManager drains and closes its executor.
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            plugin.stats().onQuit(player);
+        }
+        plugin.getLogger().info("Stats/leaderboards module disabled; online playtime queued for save.");
     }
 }
