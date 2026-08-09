@@ -87,53 +87,30 @@ commands:
     permission: superduck.rewards
 
 permissions:
-  superduck.command:
-    default: true
-  superduck.balance:
-    default: true
-  superduck.balance.others:
-    default: op
-  superduck.baltop:
-    default: true
-  superduck.ducks:
-    default: true
-  superduck.ducks.others:
-    default: op
-  superduck.pay:
-    default: true
-  superduck.settings:
-    default: true
-  superduck.shop:
-    default: true
-  superduck.sell:
-    default: true
-  superduck.auction:
-    default: true
-  superduck.auction.slots.3:
-    default: true
-  superduck.order:
-    default: true
-  superduck.order.slots.3:
-    default: true
-  superduck.key:
-    default: true
-  superduck.crates:
-    default: true
-  superduck.stats:
-    default: true
-  superduck.leaderboard:
-    default: true
-  superduck.daily:
-    default: true
-  superduck.rewards:
-    default: true
-  superduck.admin.keys:
-    default: op
-  superduck.admin.items:
-    default: op
-  superduck.admin.economy:
-    default: op
-  superduck.admin.status:
-    default: op
-  superduck.admin.reload:
-    default: op
+  superduck.command: {default: true}
+  superduck.balance: {default: true}
+  superduck.balance.others: {default: op}
+  superduck.baltop: {default: true}
+  superduck.ducks: {default: true}
+  superduck.ducks.others: {default: op}
+  superduck.pay: {default: true}
+  superduck.settings: {default: true}
+  superduck.shop: {default: true}
+  superduck.sell: {default: true}
+  superduck.auction: {default: true}
+  superduck.auction.slots.3: {default: true}
+  superduck.order: {default: true}
+  superduck.order.slots.3: {default: true}
+  superduck.key: {default: true}
+  superduck.crates: {default: true}
+  superduck.stats: {default: true}
+  superduck.leaderboard: {default: true}
+  superduck.daily: {default: true}
+  superduck.rewards: {default: true}
+  superduck.admin.keys: {default: op}
+  superduck.admin.items: {default: op}
+  superduck.admin.economy: {default: op}
+  superduck.admin.status: {default: op}
+  superduck.admin.reload: {default: op}
+  superduck.admin.emergency: {default: op}
+  superduck.admin.backup: {default: op}
