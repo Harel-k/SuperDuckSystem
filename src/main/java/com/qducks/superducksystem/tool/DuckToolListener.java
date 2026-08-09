@@ -31,59 +31,42 @@ public final class DuckToolListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        if (recursiveBreakGuard.contains(player.getUniqueId())) {
+        if (recursiveBreakGuard.contains(player.getUniqueId()) || plugin.state().maintenance("custom-tools")) {
             return;
         }
 
         ItemStack tool = player.getInventory().getItemInMainHand();
         String itemId = plugin.customItems().getId(tool);
-        if (itemId == null) {
-            return;
-        }
+        if (itemId == null) return;
 
         switch (itemId.toLowerCase(Locale.ROOT)) {
             case "duck_pickaxe" -> breakArea(player, event.getBlock(), "duck_pickaxe");
             case "duck_shovel" -> breakArea(player, event.getBlock(), "duck_shovel");
             case "duck_axe" -> breakTree(player, event.getBlock());
-            default -> {
-            }
+            default -> { }
         }
     }
 
     private void breakArea(Player player, Block origin, String toolId) {
         FileConfiguration config = plugin.configs().customItems();
         String base = "tools." + toolId;
-        if (!config.getBoolean(base + ".enabled", true) || !isAllowed(origin.getType(), toolId, config, base)) {
-            return;
-        }
+        if (!config.getBoolean(base + ".enabled", true) || !isAllowed(origin.getType(), toolId, config, base)) return;
 
         int width = oddClamp(config.getInt(base + ".width", 3), 1, 9);
         int height = oddClamp(config.getInt(base + ".height", 3), 1, 9);
         int depth = Math.max(1, Math.min(3, config.getInt(base + ".depth", 1)));
         int maxExtra = Math.max(0, Math.min(80, config.getInt(base + ".max-extra-blocks", width * height * depth - 1)));
-        if (maxExtra == 0) {
-            return;
-        }
+        if (maxExtra == 0) return;
 
         List<Block> targets = areaTargets(player, origin, width, height, depth);
         int broken = 0;
         recursiveBreakGuard.add(player.getUniqueId());
         try {
             for (Block target : targets) {
-                if (broken >= maxExtra || !player.isOnline()) {
-                    break;
-                }
-                if (sameBlock(origin, target) || target.getType().isAir()) {
-                    continue;
-                }
-                if (!isAllowed(target.getType(), toolId, config, base)) {
-                    continue;
-                }
-                // Player#breakBlock applies normal tool drops, enchantments and durability and
-                // fires BlockBreakEvent, so WorldGuard/CoreProtect/protection plugins can stop it.
-                if (player.breakBlock(target)) {
-                    broken++;
-                }
+                if (broken >= maxExtra || !player.isOnline()) break;
+                if (sameBlock(origin, target) || target.getType().isAir()) continue;
+                if (!isAllowed(target.getType(), toolId, config, base)) continue;
+                if (player.breakBlock(target)) broken++;
             }
         } finally {
             recursiveBreakGuard.remove(player.getUniqueId());
@@ -103,25 +86,13 @@ public final class DuckToolListener implements Listener {
             int depthSign;
             if (ay >= ax && ay >= az) {
                 depthSign = direction.getY() >= 0 ? 1 : -1;
-                for (int a = -halfW; a <= halfW; a++) {
-                    for (int b = -halfH; b <= halfH; b++) {
-                        result.add(origin.getRelative(a, d * depthSign, b));
-                    }
-                }
+                for (int a = -halfW; a <= halfW; a++) for (int b = -halfH; b <= halfH; b++) result.add(origin.getRelative(a, d * depthSign, b));
             } else if (ax >= az) {
                 depthSign = direction.getX() >= 0 ? 1 : -1;
-                for (int a = -halfW; a <= halfW; a++) {
-                    for (int b = -halfH; b <= halfH; b++) {
-                        result.add(origin.getRelative(d * depthSign, b, a));
-                    }
-                }
+                for (int a = -halfW; a <= halfW; a++) for (int b = -halfH; b <= halfH; b++) result.add(origin.getRelative(d * depthSign, b, a));
             } else {
                 depthSign = direction.getZ() >= 0 ? 1 : -1;
-                for (int a = -halfW; a <= halfW; a++) {
-                    for (int b = -halfH; b <= halfH; b++) {
-                        result.add(origin.getRelative(a, b, d * depthSign));
-                    }
-                }
+                for (int a = -halfW; a <= halfW; a++) for (int b = -halfH; b <= halfH; b++) result.add(origin.getRelative(a, b, d * depthSign));
             }
         }
         return result;
@@ -132,9 +103,7 @@ public final class DuckToolListener implements Listener {
         String base = "tools.duck_axe";
         if (!config.getBoolean(base + ".enabled", true)
                 || !config.getBoolean(base + ".tree-vein-enabled", true)
-                || !isTreeBlock(origin.getType(), config, base)) {
-            return;
-        }
+                || !isTreeBlock(origin.getType(), config, base)) return;
 
         int maxBlocks = Math.max(1, Math.min(1024, config.getInt(base + ".max-blocks", 256)));
         int maxRadius = Math.max(1, Math.min(64, config.getInt(base + ".max-radius", 16)));
@@ -146,24 +115,16 @@ public final class DuckToolListener implements Listener {
         while (!queue.isEmpty() && connected.size() < maxBlocks) {
             Block current = queue.removeFirst();
             BlockKey key = BlockKey.of(current);
-            if (!visited.add(key)) {
-                continue;
-            }
+            if (!visited.add(key)) continue;
             if (Math.abs(current.getX() - origin.getX()) > maxRadius
                     || Math.abs(current.getY() - origin.getY()) > maxRadius
-                    || Math.abs(current.getZ() - origin.getZ()) > maxRadius) {
-                continue;
-            }
-            if (!isTreeBlock(current.getType(), config, base)) {
-                continue;
-            }
+                    || Math.abs(current.getZ() - origin.getZ()) > maxRadius) continue;
+            if (!isTreeBlock(current.getType(), config, base)) continue;
             connected.add(current);
             for (int x = -1; x <= 1; x++) {
                 for (int y = -1; y <= 1; y++) {
                     for (int z = -1; z <= 1; z++) {
-                        if (x == 0 && y == 0 && z == 0) {
-                            continue;
-                        }
+                        if (x == 0 && y == 0 && z == 0) continue;
                         queue.addLast(current.getRelative(x, y, z));
                     }
                 }
@@ -173,15 +134,9 @@ public final class DuckToolListener implements Listener {
         recursiveBreakGuard.add(player.getUniqueId());
         try {
             for (Block target : connected) {
-                if (!player.isOnline()) {
-                    break;
-                }
-                if (sameBlock(origin, target) || target.getType().isAir()) {
-                    continue;
-                }
-                if (!isTreeBlock(target.getType(), config, base)) {
-                    continue;
-                }
+                if (!player.isOnline()) break;
+                if (sameBlock(origin, target) || target.getType().isAir()) continue;
+                if (!isTreeBlock(target.getType(), config, base)) continue;
                 player.breakBlock(target);
             }
         } finally {
@@ -190,13 +145,9 @@ public final class DuckToolListener implements Listener {
     }
 
     private boolean isAllowed(Material material, String toolId, FileConfiguration config, String base) {
-        if (matchesConfigured(material, config.getStringList(base + ".blocked-blocks"))) {
-            return false;
-        }
+        if (matchesConfigured(material, config.getStringList(base + ".blocked-blocks"))) return false;
         List<String> allowed = config.getStringList(base + ".allowed-blocks");
-        if (!allowed.isEmpty()) {
-            return matchesConfigured(material, allowed);
-        }
+        if (!allowed.isEmpty()) return matchesConfigured(material, allowed);
         String name = material.name();
         if (toolId.equals("duck_shovel")) {
             return name.contains("DIRT") || name.contains("SAND") || name.contains("GRAVEL")
@@ -214,26 +165,17 @@ public final class DuckToolListener implements Listener {
 
     private boolean isTreeBlock(Material material, FileConfiguration config, String base) {
         List<String> allowed = config.getStringList(base + ".allowed-blocks");
-        if (!allowed.isEmpty()) {
-            return matchesConfigured(material, allowed);
-        }
+        if (!allowed.isEmpty()) return matchesConfigured(material, allowed);
         String name = material.name();
-        if (name.endsWith("_LOG")) {
-            return true;
-        }
-        if (config.getBoolean(base + ".include-wood-blocks", true) && name.endsWith("_WOOD")) {
-            return true;
-        }
-        return config.getBoolean(base + ".include-stems", true)
-                && (name.endsWith("_STEM") || name.endsWith("_HYPHAE"));
+        if (name.endsWith("_LOG")) return true;
+        if (config.getBoolean(base + ".include-wood-blocks", true) && name.endsWith("_WOOD")) return true;
+        return config.getBoolean(base + ".include-stems", true) && (name.endsWith("_STEM") || name.endsWith("_HYPHAE"));
     }
 
     private boolean matchesConfigured(Material material, List<String> configured) {
         for (String raw : configured) {
             Material found = Material.matchMaterial(raw);
-            if (found == material) {
-                return true;
-            }
+            if (found == material) return true;
         }
         return false;
     }
