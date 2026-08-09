@@ -13,6 +13,7 @@ stats:
     - "<gray>Money received:</gray> <white>%money_received%</white>"
     - "<gray>Sell earnings:</gray> <green>%sell_earned%</green>"
     - "<gray>Auction earnings:</gray> <green>%auction_earned%</green>"
+    - "<gray>Order earnings:</gray> <green>%order_earned%</green>"
     - "<gray>Ducks earned:</gray> <yellow>%ducks_earned%</yellow>"
     - "<gray>Ducks spent:</gray> <yellow>%ducks_spent%</yellow>"
     - "<gray>Crates opened:</gray> <white>%crates%</white>"
