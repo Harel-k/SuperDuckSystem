@@ -19,6 +19,10 @@ repositories {
         name = "opencollab"
         url = uri("https://repo.opencollab.dev/main/")
     }
+    maven {
+        name = "codemc-vaultunlocked"
+        url = uri("https://repo.codemc.io/repository/creatorfromhell/")
+    }
 }
 
 dependencies {
@@ -26,6 +30,7 @@ dependencies {
     compileOnly("me.clip:placeholderapi:2.12.3")
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
     compileOnly("net.luckperms:api:5.5")
+    compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.20")
 }
 
 java {
