@@ -13,11 +13,37 @@ commands:
     usage: /superduck
     aliases: [sds]
     permission: superduck.command
+  balance:
+    description: View your money balance
+    usage: /balance [player]
+    aliases: [bal, money]
+    permission: superduck.balance
+  pay:
+    description: Pay another online player
+    usage: /pay <player> <amount>
+    permission: superduck.pay
+  eco:
+    description: SuperDuckSystem economy administration
+    usage: /eco <give|take|set|reset> <player> [amount] [money|ducks]
+    aliases: [economy]
+    permission: superduck.admin.economy
 
 permissions:
   superduck.command:
     description: Use /superduck
     default: true
+  superduck.balance:
+    description: View your own balance
+    default: true
+  superduck.balance.others:
+    description: View other players' balances
+    default: op
+  superduck.pay:
+    description: Pay another player
+    default: true
+  superduck.admin.economy:
+    description: Manage player money and Ducks
+    default: op
   superduck.admin.status:
     description: View SuperDuckSystem status
     default: op

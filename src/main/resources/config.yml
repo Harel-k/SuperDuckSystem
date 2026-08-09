@@ -1,12 +1,11 @@
 # SuperDuckSystem main configuration
-# Nearly every gameplay value is intended to be configurable.
+# Gameplay values live in dedicated config files so the plugin stays easy to customize.
 
 server:
   name: "QDucks SMP"
 
 modules:
-  economy: false
-  ducks: false
+  economy: true
   shop: false
   auctions: false
   orders: false

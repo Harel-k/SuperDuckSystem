@@ -9,3 +9,10 @@ errors:
 admin:
   reloaded: "<green>SuperDuckSystem configuration reloaded.</green>"
   status-header: "<aqua><bold>SuperDuckSystem</bold></aqua> <gray>Status</gray>"
+
+economy:
+  balance: "<gray>Balance:</gray> <green>%balance%</green>"
+  balance-other: "<white>%player%</white><gray>'s balance:</gray> <green>%balance%</green>"
+  paid: "<green>You paid <white>%player%</white> %amount%.</green>"
+  received: "<green>You received %amount% from <white>%player%</white>.</green>"
+  insufficient: "<red>You do not have enough money.</red>"

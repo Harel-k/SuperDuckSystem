@@ -1,6 +1,7 @@
 package com.qducks.superducksystem.module;
 
 import com.qducks.superducksystem.SuperDuckSystem;
+import com.qducks.superducksystem.economy.EconomyModule;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -15,7 +16,8 @@ public final class ModuleManager {
     }
 
     public void loadConfiguredModules() {
-        plugin.getLogger().info("Module framework initialized. Gameplay modules will be added incrementally.");
+        register(new EconomyModule(plugin));
+        plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
     public void register(SuperDuckModule module) {

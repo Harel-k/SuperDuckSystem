@@ -3,6 +3,7 @@ package com.qducks.superducksystem;
 import com.qducks.superducksystem.command.SuperDuckCommand;
 import com.qducks.superducksystem.config.ConfigManager;
 import com.qducks.superducksystem.database.DatabaseManager;
+import com.qducks.superducksystem.economy.EconomyService;
 import com.qducks.superducksystem.integration.IntegrationManager;
 import com.qducks.superducksystem.item.CustomItemService;
 import com.qducks.superducksystem.module.ModuleManager;
@@ -13,6 +14,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class SuperDuckSystem extends JavaPlugin {
     private ConfigManager configManager;
     private DatabaseManager databaseManager;
+    private EconomyService economyService;
     private IntegrationManager integrationManager;
     private ModuleManager moduleManager;
     private CustomItemService customItemService;
@@ -25,10 +27,11 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.databaseManager = new DatabaseManager(this);
         this.databaseManager.start();
 
+        this.economyService = new EconomyService(this);
+        this.customItemService = new CustomItemService(this);
+
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
-
-        this.customItemService = new CustomItemService(this);
 
         this.moduleManager = new ModuleManager(this);
         this.moduleManager.loadConfiguredModules();
@@ -62,6 +65,10 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public DatabaseManager database() {
         return databaseManager;
+    }
+
+    public EconomyService economy() {
+        return economyService;
     }
 
     public IntegrationManager integrations() {

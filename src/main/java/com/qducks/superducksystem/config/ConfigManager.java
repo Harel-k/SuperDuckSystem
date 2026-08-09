@@ -9,6 +9,7 @@ import java.io.File;
 public final class ConfigManager {
     private final SuperDuckSystem plugin;
     private FileConfiguration messages;
+    private FileConfiguration economy;
 
     public ConfigManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -17,6 +18,7 @@ public final class ConfigManager {
     public void load() {
         plugin.saveDefaultConfig();
         saveResourceIfMissing("messages.yml");
+        saveResourceIfMissing("economy.yml");
         reloadSecondaryFiles();
     }
 
@@ -33,12 +35,17 @@ public final class ConfigManager {
         return messages;
     }
 
+    public FileConfiguration economy() {
+        return economy;
+    }
+
     public String serverName() {
         return main().getString("server.name", "Server");
     }
 
     private void reloadSecondaryFiles() {
         messages = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "messages.yml"));
+        economy = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "economy.yml"));
     }
 
     private void saveResourceIfMissing(String name) {

@@ -1,0 +1,34 @@
+# SuperDuckSystem economy configuration
+# All money and Ducks values are intended to be editable without recompiling.
+
+currencies:
+  money:
+    name: "Money"
+    singular: "Dollar"
+    symbol: "$"
+    symbol-position: "PREFIX"
+    starting-balance: "0"
+    decimals: 0
+    compact:
+      enabled: true
+      start-at: "10000"
+
+  ducks:
+    name: "Ducks"
+    singular: "Duck"
+    symbol: "🦆"
+    symbol-position: "PREFIX"
+    starting-balance: "0"
+    decimals: 0
+    compact:
+      enabled: true
+      start-at: "10000"
+
+payments:
+  enabled: true
+  minimum: "1"
+  maximum: "1000000000000"
+  allow-self-pay: false
+
+transactions:
+  keep-history: true
