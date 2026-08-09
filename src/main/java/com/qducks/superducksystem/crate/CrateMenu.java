@@ -5,6 +5,7 @@ import com.qducks.superducksystem.gui.DuckGui;
 import com.qducks.superducksystem.gui.GuiButton;
 import com.qducks.superducksystem.gui.GuiItems;
 import com.qducks.superducksystem.message.MessageService;
+import com.qducks.superducksystem.settings.PlayerSetting;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -159,6 +160,10 @@ public final class CrateMenu {
     }
 
     public void openCrate(Player player, String crateId) {
+        if (plugin.state().maintenance("crates")) {
+            player.sendRichMessage("<red>Crates are temporarily in maintenance mode.</red>");
+            return;
+        }
         if (keys.cachedKeys(player.getUniqueId(), crates.keyId(crateId)) <= 0) {
             messages.send(player, "crates.no-key", "<red>You do not have the required key.</red>");
             return;
@@ -173,6 +178,8 @@ public final class CrateMenu {
                         Throwable cause = unwrap(error);
                         if (cause instanceof KeyService.NoKeyException) {
                             messages.send(player, "crates.no-key", "<red>You do not have the required key.</red>");
+                        } else if (cause instanceof CrateService.CrateMaintenanceException) {
+                            player.sendRichMessage("<red>Crates are temporarily in maintenance mode.</red>");
                         } else {
                             messages.send(player, "crates.open-failed", "<red>Could not open that crate.</red>");
                         }
@@ -291,8 +298,27 @@ public final class CrateMenu {
                                 "keys", Integer.toString(prepared.remainingKeys())
                         ));
                     }
+                    broadcastWin(player, prepared.crateId(), description);
                 })
         );
+    }
+
+    private void broadcastWin(Player winner, String crateId, String reward) {
+        if (!plugin.configs().crates().getBoolean("crates." + crateId + ".broadcast", false)) {
+            return;
+        }
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            if (!plugin.settings().get(viewer.getUniqueId(), PlayerSetting.CRATE_BROADCASTS)) {
+                continue;
+            }
+            messages.send(viewer, "crates.broadcast",
+                    "<gold><white>%player%</white> won <yellow>%reward%</yellow> from <white>%crate%</white>!</gold>",
+                    Map.of(
+                            "player", winner.getName(),
+                            "reward", reward,
+                            "crate", crates.displayName(crateId)
+                    ));
+        }
     }
 
     public void preview(Player player, String crateId) {
@@ -303,7 +329,6 @@ public final class CrateMenu {
                 MINI.deserialize("<aqua><bold>" + escape(crates.displayName(crateId)) + " Loot</bold></aqua>"));
         fill(gui, config, "crate-menu.filler");
         int slot = 0;
-        double totalWeight = rewards.stream().mapToDouble(CrateReward::weight).filter(weight -> weight > 0).sum();
         for (CrateReward reward : rewards) {
             while (slot < 45 && gui.getInventory().getItem(slot) != null) {
                 slot++;
@@ -314,8 +339,7 @@ public final class CrateMenu {
             ItemStack icon = crates.rewardIcon(reward).clone();
             ItemMeta meta = icon.getItemMeta();
             meta.displayName(MINI.deserialize("<white>" + escape(crates.rewardDescription(reward)) + "</white>"));
-            double percent = totalWeight <= 0 ? 0 : (reward.weight() / totalWeight) * 100.0;
-            meta.lore(List.of(MINI.deserialize("<gray>Chance:</gray> <yellow>" + formatPercent(percent) + "</yellow>")));
+            meta.lore(List.of(MINI.deserialize("<gray>Weight:</gray> <white>" + reward.weight() + "</white>")));
             icon.setItemMeta(meta);
             gui.setDisplay(slot++, icon);
         }
@@ -330,20 +354,18 @@ public final class CrateMenu {
             String fallbackName,
             Map<String, String> replacements
     ) {
-        Material itemMaterial = material(config.getString(base + ".material"), fallbackMaterial);
+        Material iconMaterial = material(config.getString(base + ".material"), fallbackMaterial);
         String name = replace(config.getString(base + ".name", fallbackName), replacements);
-        List<String> lore = new ArrayList<>();
-        for (String line : config.getStringList(base + ".lore")) {
-            lore.add(replace(line, replacements));
-        }
-        return GuiItems.item(itemMaterial, name, lore.toArray(String[]::new));
+        List<String> lore = config.getStringList(base + ".lore").stream()
+                .map(line -> replace(line, replacements))
+                .toList();
+        return GuiItems.item(iconMaterial, name, lore.toArray(String[]::new));
     }
 
-    private String replace(String input, Map<String, String> replacements) {
-        String result = input == null ? "" : input;
+    private String replace(String value, Map<String, String> replacements) {
+        String result = value == null ? "" : value;
         for (Map.Entry<String, String> entry : replacements.entrySet()) {
-            String replacement = entry.getKey().equals("open_status") ? entry.getValue() : escape(entry.getValue());
-            result = result.replace("%" + entry.getKey() + "%", replacement);
+            result = result.replace("%" + entry.getKey() + "%", entry.getValue());
         }
         return result;
     }
@@ -372,19 +394,22 @@ public final class CrateMenu {
         return Math.max(1, Math.min(6, rows));
     }
 
-    private String formatPercent(double value) {
-        if (Math.abs(value - Math.rint(value)) < 0.005) {
-            return String.format(Locale.ROOT, "%.0f%%", value);
-        }
-        return String.format(Locale.ROOT, "%.2f%%", value);
-    }
-
     private Throwable unwrap(Throwable throwable) {
         Throwable current = throwable;
         while (current.getCause() != null && current.getCause() != current) {
             current = current.getCause();
         }
         return current;
+    }
+
+    private String formatPercent(double value) {
+        if (value >= 10) {
+            return String.format(Locale.ROOT, "%.1f%%", value);
+        }
+        if (value >= 1) {
+            return String.format(Locale.ROOT, "%.2f%%", value);
+        }
+        return String.format(Locale.ROOT, "%.3f%%", value);
     }
 
     private String escape(String value) {
