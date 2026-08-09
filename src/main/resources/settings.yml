@@ -1,5 +1,5 @@
-# Default values for /settings.
-# Individual players can override these values once the settings UI is enabled.
+# SuperDuckSystem player settings
+# Every default, menu slot, material, label and description can be changed here.
 
 defaults:
   pay-notifications: true
@@ -8,11 +8,150 @@ defaults:
   crate-broadcasts: true
   sounds: true
   particles: true
-
-  # Confirmation controls used by upcoming gameplay modules.
   auction-sell-confirmation: true
   auction-buy-confirmation: true
   order-create-confirmation: true
-
-  # Players who enable this can skip the extra purchase confirmation in /ah.
   instant-auction-purchase: false
+
+menu:
+  title: "<aqua><bold>Player Settings</bold></aqua>"
+  rows: 6
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  status:
+    enabled: "<green>ENABLED ✔</green>"
+    disabled: "<red>DISABLED ✖</red>"
+  close:
+    enabled: true
+    slot: 49
+    material: BARRIER
+    name: "<red><bold>Close</bold></red>"
+    lore:
+      - "<gray>Close the settings menu.</gray>"
+  items:
+    pay-notifications:
+      enabled: true
+      slot: 10
+      material: GOLD_INGOT
+      name: "<yellow><bold>Pay Notifications</bold></yellow>"
+      plain-name: "Pay Notifications"
+      bedrock-label: "Pay Notifications"
+      lore:
+        - "<gray>Messages when another player pays you.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    auction-notifications:
+      enabled: true
+      slot: 11
+      material: GOLD_NUGGET
+      name: "<gold><bold>Auction Notifications</bold></gold>"
+      plain-name: "Auction Notifications"
+      bedrock-label: "Auction Notifications"
+      lore:
+        - "<gray>Notifications for auction sales and updates.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    order-notifications:
+      enabled: true
+      slot: 12
+      material: PAPER
+      name: "<aqua><bold>Order Notifications</bold></aqua>"
+      plain-name: "Order Notifications"
+      bedrock-label: "Order Notifications"
+      lore:
+        - "<gray>Notifications when your orders are filled.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    crate-broadcasts:
+      enabled: true
+      slot: 13
+      material: CHEST
+      name: "<light_purple><bold>Crate Broadcasts</bold></light_purple>"
+      plain-name: "Crate Broadcasts"
+      bedrock-label: "Crate Broadcasts"
+      lore:
+        - "<gray>See global crate reward broadcasts.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    sounds:
+      enabled: true
+      slot: 14
+      material: NOTE_BLOCK
+      name: "<green><bold>Sounds</bold></green>"
+      plain-name: "Sounds"
+      bedrock-label: "Menu & Notification Sounds"
+      lore:
+        - "<gray>SuperDuckSystem menu and notification sounds.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    particles:
+      enabled: true
+      slot: 15
+      material: BLAZE_POWDER
+      name: "<yellow><bold>Particles</bold></yellow>"
+      plain-name: "Particles"
+      bedrock-label: "Particles"
+      lore:
+        - "<gray>SuperDuckSystem cosmetic particle effects.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    auction-sell-confirmation:
+      enabled: true
+      slot: 28
+      material: OAK_SIGN
+      name: "<gold><bold>AH Sell Confirmation</bold></gold>"
+      plain-name: "AH Sell Confirmation"
+      bedrock-label: "Confirm before listing an auction"
+      lore:
+        - "<gray>Ask before /ah sell creates a listing.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    auction-buy-confirmation:
+      enabled: true
+      slot: 29
+      material: EMERALD
+      name: "<green><bold>AH Buy Confirmation</bold></green>"
+      plain-name: "AH Buy Confirmation"
+      bedrock-label: "Confirm before buying an auction"
+      lore:
+        - "<gray>Ask before purchasing an auction item.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    order-create-confirmation:
+      enabled: true
+      slot: 30
+      material: WRITABLE_BOOK
+      name: "<aqua><bold>Order Confirmation</bold></aqua>"
+      plain-name: "Order Confirmation"
+      bedrock-label: "Confirm before creating an order"
+      lore:
+        - "<gray>Show final item, amount and cost before ordering.</gray>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    instant-auction-purchase:
+      enabled: true
+      slot: 32
+      material: LIGHTNING_ROD
+      name: "<yellow><bold>Instant AH Purchase</bold></yellow>"
+      plain-name: "Instant AH Purchase"
+      bedrock-label: "Instant auction purchases"
+      lore:
+        - "<gray>Buy immediately when clicking an AH listing.</gray>"
+        - "<red>This skips the normal buy confirmation.</red>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+
+bedrock:
+  title: "Player Settings"
