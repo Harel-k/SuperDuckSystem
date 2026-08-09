@@ -19,6 +19,7 @@ public final class ConfigManager {
     private FileConfiguration crateLocations;
     private FileConfiguration customItems;
     private FileConfiguration stats;
+    private FileConfiguration rewards;
 
     public ConfigManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -37,6 +38,7 @@ public final class ConfigManager {
         saveResourceIfMissing("crate-locations.yml");
         saveResourceIfMissing("custom-items.yml");
         saveResourceIfMissing("stats.yml");
+        saveResourceIfMissing("rewards.yml");
         reloadSecondaryFiles();
     }
 
@@ -45,53 +47,19 @@ public final class ConfigManager {
         reloadSecondaryFiles();
     }
 
-    public FileConfiguration main() {
-        return plugin.getConfig();
-    }
-
-    public FileConfiguration messages() {
-        return messages;
-    }
-
-    public FileConfiguration economy() {
-        return economy;
-    }
-
-    public FileConfiguration gui() {
-        return gui;
-    }
-
-    public FileConfiguration settings() {
-        return settings;
-    }
-
-    public FileConfiguration shop() {
-        return shop;
-    }
-
-    public FileConfiguration auctions() {
-        return auctions;
-    }
-
-    public FileConfiguration orders() {
-        return orders;
-    }
-
-    public FileConfiguration crates() {
-        return crates;
-    }
-
-    public FileConfiguration crateLocations() {
-        return crateLocations;
-    }
-
-    public FileConfiguration customItems() {
-        return customItems;
-    }
-
-    public FileConfiguration stats() {
-        return stats;
-    }
+    public FileConfiguration main() { return plugin.getConfig(); }
+    public FileConfiguration messages() { return messages; }
+    public FileConfiguration economy() { return economy; }
+    public FileConfiguration gui() { return gui; }
+    public FileConfiguration settings() { return settings; }
+    public FileConfiguration shop() { return shop; }
+    public FileConfiguration auctions() { return auctions; }
+    public FileConfiguration orders() { return orders; }
+    public FileConfiguration crates() { return crates; }
+    public FileConfiguration crateLocations() { return crateLocations; }
+    public FileConfiguration customItems() { return customItems; }
+    public FileConfiguration stats() { return stats; }
+    public FileConfiguration rewards() { return rewards; }
 
     public String serverName() {
         return main().getString("server.name", "Server");
@@ -109,6 +77,7 @@ public final class ConfigManager {
         crateLocations = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "crate-locations.yml"));
         customItems = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "custom-items.yml"));
         stats = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "stats.yml"));
+        rewards = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rewards.yml"));
     }
 
     private void saveResourceIfMissing(String name) {
