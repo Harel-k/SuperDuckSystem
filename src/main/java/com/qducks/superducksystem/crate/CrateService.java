@@ -56,6 +56,9 @@ public final class CrateService {
     }
 
     public CompletableFuture<PreparedOpen> prepareOpen(Player player, String requestedCrateId) {
+        if (plugin.state().maintenance("crates")) {
+            return CompletableFuture.failedFuture(new CrateMaintenanceException());
+        }
         String crateId = normalize(requestedCrateId);
         if (!configuredCrates().stream().map(this::normalize).toList().contains(crateId))
             return CompletableFuture.failedFuture(new UnknownCrateException(crateId));
@@ -199,5 +202,8 @@ public final class CrateService {
     }
     public static final class EmptyCrateException extends RuntimeException {
         public EmptyCrateException(String crateId) { super("Crate has no valid loot: " + crateId); }
+    }
+    public static final class CrateMaintenanceException extends RuntimeException {
+        public CrateMaintenanceException() { super("Crates are temporarily in maintenance mode"); }
     }
 }
