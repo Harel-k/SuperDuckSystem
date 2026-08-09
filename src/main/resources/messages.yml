@@ -8,6 +8,7 @@ help:
 errors:
   no-permission: "<red>You do not have permission to do that.</red>"
   unknown-subcommand: "<red>Unknown subcommand.</red>"
+  players-only: "<red>This command can only be used by players.</red>"
   player-not-online: "<red>That player is not online.</red>"
   player-never-joined: "<red>That player has never joined the server.</red>"
   invalid-amount: "<red>That is not a valid amount.</red>"
@@ -42,3 +43,7 @@ ducks:
   usage: "<red>Usage: /ducks <player></red>"
   balance: "<gray>Ducks:</gray> <yellow>%ducks%</yellow>"
   balance-other: "<white>%player%</white><gray>'s Ducks:</gray> <yellow>%ducks%</yellow>"
+
+settings:
+  saved: "<green>Your settings were saved.</green>"
+  failed: "<red>Could not save your settings.</red>"
