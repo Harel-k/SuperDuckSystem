@@ -108,6 +108,11 @@ public final class RewardService {
         }).thenCompose(reserved -> {
             List<Map<?, ?>> definitions = new ArrayList<>(plugin.configs().rewards().getMapList("daily.base-rewards"));
             definitions.addAll(plugin.configs().rewards().getMapList("daily.streak-bonuses." + reserved.streak));
+            try {
+                validateDefinitions(definitions);
+            } catch (RuntimeException invalid) {
+                return rollbackDaily(uuid, reserved).thenCompose(ignored -> CompletableFuture.failedFuture(invalid));
+            }
             return grantAll(player, definitions).handle((descriptions, error) -> {
                 if (error == null) return CompletableFuture.completedFuture(new DailyClaim(reserved.streak, descriptions));
                 return rollbackDaily(uuid, reserved).thenCompose(ignored -> CompletableFuture.<DailyClaim>failedFuture(unwrap(error)));
@@ -141,6 +146,12 @@ public final class RewardService {
         String base = "playtime.milestones." + rewardId;
         if (!plugin.configs().rewards().isConfigurationSection(base)) return CompletableFuture.failedFuture(new IllegalArgumentException("Unknown playtime reward"));
         long required = Math.max(1L, plugin.configs().rewards().getLong(base + ".minutes", 1L)) * 60L;
+        List<Map<?, ?>> definitions = plugin.configs().rewards().getMapList(base + ".rewards");
+        try {
+            validateDefinitions(definitions);
+        } catch (RuntimeException invalid) {
+            return CompletableFuture.failedFuture(invalid);
+        }
         return plugin.stats().snapshot(uuid).thenCompose(stats -> {
             if (stats.playtimeSeconds() < required) return CompletableFuture.failedFuture(new NotEnoughPlaytimeException(required - stats.playtimeSeconds()));
             long now = System.currentTimeMillis();
@@ -152,7 +163,7 @@ public final class RewardService {
                     throw exception;
                 }
                 return null;
-            }).thenCompose(ignored -> grantAll(player, plugin.configs().rewards().getMapList(base + ".rewards"))
+            }).thenCompose(ignored -> grantAll(player, definitions)
                     .handle((descriptions, error) -> error == null ? CompletableFuture.completedFuture(descriptions)
                             : deletePlaytimeClaim(uuid, rewardId).thenCompose(x -> CompletableFuture.<List<String>>failedFuture(unwrap(error))))
                     .thenCompose(future -> future));
@@ -160,6 +171,7 @@ public final class RewardService {
     }
 
     public CompletableFuture<List<String>> grantAll(Player player, List<Map<?, ?>> definitions) {
+        validateDefinitions(definitions);
         CompletableFuture<List<String>> chain = CompletableFuture.completedFuture(new ArrayList<>());
         for (Map<?, ?> definition : definitions) {
             chain = chain.thenCompose(descriptions -> grantOne(player, definition).thenApply(description -> {
@@ -167,6 +179,37 @@ public final class RewardService {
             }));
         }
         return chain.thenApply(List::copyOf);
+    }
+
+    private void validateDefinitions(List<Map<?, ?>> definitions) {
+        for (Map<?, ?> definition : definitions) {
+            String type = string(definition, "type", "").toUpperCase(Locale.ROOT);
+            switch (type) {
+                case "MONEY", "DUCKS" -> positiveDecimal(definition.get("amount"));
+                case "KEY" -> {
+                    String key = string(definition, "key", "").toLowerCase(Locale.ROOT);
+                    positiveInt(definition.get("amount"), 1);
+                    if (key.isBlank() || plugin.keys().configuredKeyIds().stream().noneMatch(id -> id.equalsIgnoreCase(key))) {
+                        throw new IllegalArgumentException("Unknown reward key: " + key);
+                    }
+                }
+                case "ITEM" -> {
+                    Material material = Material.matchMaterial(string(definition, "material", ""));
+                    positiveInt(definition.get("amount"), 1);
+                    if (material == null || material.isAir() || !material.isItem()) {
+                        throw new IllegalArgumentException("Invalid reward material");
+                    }
+                }
+                case "CUSTOM_ITEM" -> {
+                    String id = string(definition, "id", string(definition, "item", ""));
+                    positiveInt(definition.get("amount"), 1);
+                    if (id.isBlank() || !plugin.customItems().exists(id)) {
+                        throw new IllegalArgumentException("Invalid custom reward item: " + id);
+                    }
+                }
+                default -> throw new IllegalArgumentException("Unsupported reward type: " + type);
+            }
+        }
     }
 
     private CompletableFuture<String> grantOne(Player player, Map<?, ?> definition) {
