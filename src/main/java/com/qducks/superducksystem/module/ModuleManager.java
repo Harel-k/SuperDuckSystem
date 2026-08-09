@@ -2,6 +2,7 @@ package com.qducks.superducksystem.module;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.auction.AuctionModule;
+import com.qducks.superducksystem.crate.CrateModule;
 import com.qducks.superducksystem.economy.EconomyModule;
 import com.qducks.superducksystem.order.OrderModule;
 import com.qducks.superducksystem.settings.SettingsModule;
@@ -25,6 +26,7 @@ public final class ModuleManager {
         register(new ShopModule(plugin));
         register(new AuctionModule(plugin));
         register(new OrderModule(plugin));
+        register(new CrateModule(plugin));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
