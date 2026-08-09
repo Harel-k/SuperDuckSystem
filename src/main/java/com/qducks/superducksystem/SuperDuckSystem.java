@@ -77,6 +77,9 @@ public final class SuperDuckSystem extends JavaPlugin {
         if (moduleManager != null) {
             moduleManager.shutdown();
         }
+        if (integrationManager != null) {
+            integrationManager.shutdown();
+        }
         if (databaseManager != null) {
             databaseManager.close();
         }
