@@ -39,6 +39,10 @@ commands:
     description: Open your player settings
     usage: /settings
     permission: superduck.settings
+  sell:
+    description: Open the sell menu
+    usage: /sell
+    permission: superduck.sell
 
 permissions:
   superduck.command:
@@ -64,6 +68,9 @@ permissions:
     default: true
   superduck.settings:
     description: Open your player settings
+    default: true
+  superduck.sell:
+    description: Open the sell menu
     default: true
   superduck.admin.economy:
     description: Manage player money and Ducks
