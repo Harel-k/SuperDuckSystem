@@ -15,6 +15,7 @@ import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.math.BigDecimal;
@@ -44,6 +45,7 @@ public final class AuctionMenu {
     }
 
     public void open(Player player, String search, AuctionSort sort, int page) {
+        plugin.rankPerks().apply(player);
         FileConfiguration config = plugin.configs().auctions();
         int configuredSize = Math.max(1, config.getInt("menu.page-size", 36));
         List<Integer> contentSlots = contentSlots(config, "menu.content-slots", DEFAULT_CONTENT_SLOTS);
@@ -63,29 +65,121 @@ public final class AuctionMenu {
         );
     }
 
+    /** Compatibility shortcut for /ah sell <price>. The GUI is the primary listing flow. */
     public void startListing(Player player, BigDecimal requestedPrice) {
-        ItemStack held = player.getInventory().getItemInMainHand();
-        if (held.getType().isAir() || held.getAmount() <= 0) {
+        PlayerInventory inventory = player.getInventory();
+        int slot = inventory.getHeldItemSlot();
+        ItemStack held = inventory.getItem(slot);
+        if (held == null || held.getType().isAir() || held.getAmount() <= 0) {
             messages.send(player, "auction.hold-item", "<red>Hold the item you want to sell in your main hand.</red>");
             return;
         }
 
-        BigDecimal price;
-        try {
-            price = plugin.economy().formatter().normalize(CurrencyType.MONEY, requestedPrice);
-            if (price.signum() <= 0) {
-                throw new IllegalArgumentException("Price must be positive");
-            }
-        } catch (IllegalArgumentException exception) {
+        BigDecimal price = normalizePrice(requestedPrice);
+        if (price == null) {
             messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
             return;
         }
 
-        ItemStack captured = held.clone();
+        ListingSelection selection = new ListingSelection(slot, held.clone());
         if (plugin.settings().get(player.getUniqueId(), PlayerSetting.AUCTION_SELL_CONFIRMATION)) {
-            openSellConfirmation(player, captured, price);
+            openSellConfirmation(player, selection, price);
         } else {
-            createListing(player, captured, price);
+            createListing(player, selection, price);
+        }
+    }
+
+    public void beginGuiListing(Player player) {
+        plugin.rankPerks().apply(player);
+        openInventoryPicker(player);
+    }
+
+    private void openInventoryPicker(Player player) {
+        FileConfiguration config = plugin.configs().auctions();
+        int rows = clampRows(config.getInt("listing.inventory-picker.rows", 6));
+        DuckGui gui = new DuckGui(plugin, rows,
+                MINI.deserialize(config.getString("listing.inventory-picker.title", "<gold><bold>Select Auction Item</bold></gold>")));
+        fill(gui, config, "listing.inventory-picker.filler");
+        List<Integer> displaySlots = contentSlots(config, "listing.inventory-picker.content-slots", DEFAULT_CONTENT_SLOTS);
+
+        ItemStack[] storage = player.getInventory().getStorageContents();
+        int displayIndex = 0;
+        for (int inventorySlot = 0; inventorySlot < storage.length && displayIndex < displaySlots.size(); inventorySlot++) {
+            ItemStack current = storage[inventorySlot];
+            if (current == null || current.getType().isAir() || current.getAmount() <= 0) {
+                continue;
+            }
+            int displaySlot = displaySlots.get(displayIndex++);
+            if (!validSlot(gui, displaySlot)) {
+                continue;
+            }
+            int selectedInventorySlot = inventorySlot;
+            ItemStack selected = current.clone();
+            ItemStack icon = appendLore(selected, List.of(
+                    "",
+                    "<gray>Amount:</gray> <white>" + selected.getAmount() + "</white>",
+                    "<yellow>Click to list this stack.</yellow>"
+            ));
+            gui.set(displaySlot, new GuiButton(icon,
+                    context -> requestListingPrice(context.player(), new ListingSelection(selectedInventorySlot, selected))));
+        }
+
+        if (displayIndex == 0) {
+            int emptySlot = config.getInt("listing.inventory-picker.empty.slot", 22);
+            if (validSlot(gui, emptySlot)) {
+                gui.setDisplay(emptySlot, controlItem(config, "listing.inventory-picker.empty", Material.CHEST,
+                        "<gray>Your inventory has no items to list.</gray>"));
+            }
+        }
+
+        int backSlot = config.getInt("listing.inventory-picker.back.slot", 49);
+        if (validSlot(gui, backSlot)) {
+            gui.set(backSlot, new GuiButton(
+                    controlItem(config, "listing.inventory-picker.back", Material.BARRIER, "<red>Back to My Auctions</red>"),
+                    context -> openMyItems(context.player())
+            ));
+        }
+        gui.open(player);
+    }
+
+    private void requestListingPrice(Player player, ListingSelection selection) {
+        String defaultPrice = plugin.configs().auctions().getString("listing.default-price-input", "100");
+        messages.send(player, "auction.enter-price", "<yellow>Enter the listing price on the sign.</yellow>");
+        plugin.signInput().request(player, defaultPrice, input ->
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (!player.isOnline()) {
+                        return;
+                    }
+                    BigDecimal price;
+                    try {
+                        price = new BigDecimal(input.replace(",", "").trim());
+                    } catch (NumberFormatException exception) {
+                        messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
+                        return;
+                    }
+                    price = normalizePrice(price);
+                    if (price == null) {
+                        messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
+                        return;
+                    }
+                    if (plugin.settings().get(player.getUniqueId(), PlayerSetting.AUCTION_SELL_CONFIRMATION)) {
+                        openSellConfirmation(player, selection, price);
+                    } else {
+                        createListing(player, selection, price);
+                    }
+                })
+        );
+    }
+
+    private BigDecimal normalizePrice(BigDecimal requested) {
+        try {
+            BigDecimal price = plugin.economy().formatter().normalize(CurrencyType.MONEY, requested);
+            if (price.signum() <= 0) {
+                return null;
+            }
+            return price;
+        } catch (IllegalArgumentException exception) {
+            return null;
         }
     }
 
@@ -150,7 +244,7 @@ public final class AuctionMenu {
 
         int myItemsSlot = config.getInt("menu.my-items.slot", 47);
         if (validSlot(gui, myItemsSlot)) {
-            ItemStack myItems = controlItem(config, "menu.my-items", Material.CHEST, "<gold><bold>My Items</bold></gold>");
+            ItemStack myItems = controlItem(config, "menu.my-items", Material.CHEST, "<gold><bold>My Auctions</bold></gold>");
             gui.set(myItemsSlot, new GuiButton(myItems, context -> openMyItems(context.player())));
         }
 
@@ -221,7 +315,7 @@ public final class AuctionMenu {
         gui.open(player);
     }
 
-    private void openSellConfirmation(Player player, ItemStack item, BigDecimal price) {
+    private void openSellConfirmation(Player player, ListingSelection selection, BigDecimal price) {
         FileConfiguration config = plugin.configs().auctions();
         int rows = clampRows(config.getInt("confirmation.rows", 3));
         DuckGui gui = new DuckGui(plugin, rows,
@@ -230,10 +324,10 @@ public final class AuctionMenu {
 
         int itemSlot = config.getInt("confirmation.item-slot", 13);
         if (validSlot(gui, itemSlot)) {
-            ItemStack display = appendLore(item.clone(), List.of(
+            ItemStack display = appendLore(selection.item().clone(), List.of(
                     "",
                     "<gray>Listing price:</gray> <green>" + plugin.economy().formatter().format(CurrencyType.MONEY, price) + "</green>",
-                    "<gray>Entire held stack will be listed.</gray>"
+                    "<gray>The selected inventory stack will be listed.</gray>"
             ));
             gui.setDisplay(itemSlot, display);
         }
@@ -243,7 +337,7 @@ public final class AuctionMenu {
             Material material = material(config.getString("confirmation.confirm-material"), Material.LIME_CONCRETE);
             ItemStack confirm = GuiItems.item(material,
                     config.getString("confirmation.confirm-name", "<green><bold>Confirm</bold></green>"));
-            gui.set(confirmSlot, new GuiButton(confirm, context -> createListing(context.player(), item, price)));
+            gui.set(confirmSlot, new GuiButton(confirm, context -> createListing(context.player(), selection, price)));
         }
 
         int cancelSlot = config.getInt("confirmation.cancel-slot", 15);
@@ -251,28 +345,30 @@ public final class AuctionMenu {
             Material material = material(config.getString("confirmation.cancel-material"), Material.RED_CONCRETE);
             ItemStack cancel = GuiItems.item(material,
                     config.getString("confirmation.cancel-name", "<red><bold>Cancel</bold></red>"));
-            gui.set(cancelSlot, new GuiButton(cancel, context -> context.player().closeInventory()));
+            gui.set(cancelSlot, new GuiButton(cancel, context -> openInventoryPicker(context.player())));
         }
         gui.open(player);
     }
 
-    private void createListing(Player player, ItemStack captured, BigDecimal price) {
-        ItemStack current = player.getInventory().getItemInMainHand();
-        if (!current.equals(captured)) {
+    private void createListing(Player player, ListingSelection selection, BigDecimal price) {
+        plugin.rankPerks().apply(player);
+        PlayerInventory inventory = player.getInventory();
+        ItemStack current = inventory.getItem(selection.inventorySlot());
+        if (current == null || !current.equals(selection.item())) {
             player.closeInventory();
             messages.send(player, "auction.item-changed",
-                    "<red>Your held item changed. Run /ah sell again.</red>");
+                    "<red>That inventory stack changed. Choose the item again.</red>");
             return;
         }
 
         int slotLimit = service.slotLimit(player);
-        player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+        inventory.setItem(selection.inventorySlot(), null);
         player.closeInventory();
 
-        service.createListing(player.getUniqueId(), player.getName(), captured, price, slotLimit)
+        service.createListing(player.getUniqueId(), player.getName(), selection.item(), price, slotLimit)
                 .whenComplete((listing, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
                     if (error != null) {
-                        giveItem(player, captured);
+                        restoreToSlotOrGive(player, selection);
                         Throwable cause = unwrap(error);
                         if (cause instanceof AuctionService.SlotLimitException limit) {
                             messages.send(player, "auction.slot-limit",
@@ -294,6 +390,7 @@ public final class AuctionMenu {
                             "<green>Listed your item for %price%.</green>", Map.of(
                                     "price", plugin.economy().formatter().format(CurrencyType.MONEY, listing.price())
                             ));
+                    openMyItems(player);
                 }));
     }
 
@@ -332,6 +429,7 @@ public final class AuctionMenu {
     }
 
     private void openMyItems(Player player) {
+        plugin.rankPerks().apply(player);
         var listingsFuture = service.sellerListings(player.getUniqueId(), false);
         var claimsFuture = service.pendingClaims(player.getUniqueId());
         listingsFuture.thenCombine(claimsFuture, MyItemsData::new).whenComplete((data, error) ->
@@ -351,8 +449,12 @@ public final class AuctionMenu {
     private void renderMyItems(Player player, MyItemsData data) {
         FileConfiguration config = plugin.configs().auctions();
         int rows = clampRows(config.getInt("my-items.rows", 6));
-        DuckGui gui = new DuckGui(plugin, rows,
-                MINI.deserialize(config.getString("my-items.title", "<gold><bold>My Auctions</bold></gold>")));
+        int limit = service.slotLimit(player);
+        int used = data.listings().size();
+        String title = config.getString("my-items.title", "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray>")
+                .replace("%used%", Integer.toString(used))
+                .replace("%limit%", Integer.toString(limit));
+        DuckGui gui = new DuckGui(plugin, rows, MINI.deserialize(title));
         fill(gui, config, "my-items.filler");
         List<Integer> slots = contentSlots(config, "my-items.content-slots", DEFAULT_CONTENT_SLOTS);
         int index = 0;
@@ -387,6 +489,20 @@ public final class AuctionMenu {
             gui.set(slot, new GuiButton(icon, context -> cancelListing(context.player(), listing)));
         }
 
+        int available = Math.max(0, limit - used);
+        for (int add = 0; add < available && index < slots.size(); add++) {
+            int slot = slots.get(index++);
+            if (!validSlot(gui, slot)) {
+                continue;
+            }
+            ItemStack empty = controlItem(config, "my-items.empty-slot", Material.LIME_STAINED_GLASS_PANE,
+                    "<green><bold>+ List Item</bold></green>", Map.of(
+                            "used", Integer.toString(used),
+                            "limit", Integer.toString(limit)
+                    ));
+            gui.set(slot, new GuiButton(empty, context -> beginGuiListing(context.player())));
+        }
+
         int backSlot = config.getInt("my-items.back.slot", 49);
         if (validSlot(gui, backSlot)) {
             ItemStack back = controlItem(config, "my-items.back", Material.BARRIER, "<red>Back</red>");
@@ -408,7 +524,7 @@ public final class AuctionMenu {
                         return;
                     }
                     messages.send(player, "auction.cancelled",
-                            "<green>Auction cancelled. The item is now in My Items.</green>");
+                            "<green>Auction cancelled. The item is now in My Auctions.</green>");
                     openMyItems(player);
                 })
         );
@@ -425,7 +541,7 @@ public final class AuctionMenu {
                     }
                     if (error != null) {
                         messages.send(player, "auction.claim-failed",
-                                "<yellow>Your item is still waiting in My Items. Open /ah and try again.</yellow>");
+                                "<yellow>Your item is still waiting in My Auctions. Open /ah and try again.</yellow>");
                         return;
                     }
                     giveItem(player, claim.item());
@@ -437,8 +553,21 @@ public final class AuctionMenu {
                     } else {
                         messages.send(player, "auction.claimed", "<green>Claimed your auction item.</green>");
                     }
+                    openMyItems(player);
                 })
         );
+    }
+
+    private void restoreToSlotOrGive(Player player, ListingSelection selection) {
+        if (!player.isOnline()) {
+            return;
+        }
+        ItemStack current = player.getInventory().getItem(selection.inventorySlot());
+        if (current == null || current.getType().isAir()) {
+            player.getInventory().setItem(selection.inventorySlot(), selection.item().clone());
+        } else {
+            giveItem(player, selection.item());
+        }
     }
 
     private ItemStack listingIcon(AuctionListing listing, List<String> configuredLore) {
@@ -569,6 +698,12 @@ public final class AuctionMenu {
             current = current.getCause();
         }
         return current;
+    }
+
+    private record ListingSelection(int inventorySlot, ItemStack item) {
+        private ListingSelection {
+            item = item.clone();
+        }
     }
 
     private record MyItemsData(List<AuctionListing> listings, List<AuctionClaim> claims) {
