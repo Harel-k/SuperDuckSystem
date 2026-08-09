@@ -13,6 +13,7 @@ import com.qducks.superducksystem.player.PlayerProfileListener;
 import com.qducks.superducksystem.rank.RankPerkListener;
 import com.qducks.superducksystem.rank.RankPerkService;
 import com.qducks.superducksystem.settings.SettingsService;
+import com.qducks.superducksystem.stats.StatsService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -27,6 +28,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private GuiManager guiManager;
     private VirtualSignInputService signInputService;
     private RankPerkService rankPerkService;
+    private StatsService statsService;
 
     @Override
     public void onEnable() {
@@ -41,6 +43,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.customItemService = new CustomItemService(this);
         this.guiManager = new GuiManager(this);
         this.signInputService = new VirtualSignInputService(this);
+        this.statsService = new StatsService(this);
 
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
@@ -117,5 +120,9 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public RankPerkService rankPerks() {
         return rankPerkService;
+    }
+
+    public StatsService stats() {
+        return statsService;
     }
 }
