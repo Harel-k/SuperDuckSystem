@@ -1,0 +1,117 @@
+# SuperDuckSystem Auction House configuration
+# All prices, limits and GUI appearance can be changed without recompiling the plugin.
+
+listing:
+  minimum-price: "1"
+  maximum-price: "1000000000000"
+  duration-minutes: 1440
+
+limits:
+  # Higher values can be granted with superduck.auction.slots.<number>
+  default-slots: 3
+
+menu:
+  title: "<gold><bold>Auction House</bold></gold> <gray>%page%/%pages%</gray>"
+  rows: 6
+  page-size: 36
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  content-slots:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+    - 24
+    - 25
+    - 26
+    - 27
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - 33
+    - 34
+    - 35
+  listing-lore:
+    - ""
+    - "<gray>Seller:</gray> <white>%seller%</white>"
+    - "<gray>Price:</gray> <green>%price%</green>"
+    - "<gray>Expires:</gray> <white>%expires%</white>"
+    - ""
+    - "<yellow>Click to buy</yellow>"
+  previous:
+    slot: 45
+    material: ARROW
+    name: "<yellow>Previous Page</yellow>"
+  search:
+    slot: 46
+    material: OAK_SIGN
+    name: "<aqua><bold>Search</bold></aqua>"
+    lore:
+      - "<gray>Current:</gray> <white>%search%</white>"
+      - "<yellow>Click to search.</yellow>"
+  my-items:
+    slot: 47
+    material: CHEST
+    name: "<gold><bold>My Items</bold></gold>"
+    lore:
+      - "<gray>View your active and returned auctions.</gray>"
+  refresh:
+    slot: 49
+    material: SUNFLOWER
+    name: "<green><bold>Refresh</bold></green>"
+  sort:
+    slot: 51
+    material: HOPPER
+    name: "<yellow><bold>Sort</bold></yellow>"
+    lore:
+      - "<gray>Current:</gray> <white>%sort%</white>"
+      - "<yellow>Click to change.</yellow>"
+  clear-search:
+    slot: 52
+    material: MILK_BUCKET
+    name: "<red>Clear Search</red>"
+  next:
+    slot: 53
+    material: ARROW
+    name: "<yellow>Next Page</yellow>"
+
+confirmation:
+  rows: 3
+  buy-title: "<gold><bold>Confirm Purchase</bold></gold>"
+  sell-title: "<gold><bold>Confirm Listing</bold></gold>"
+  item-slot: 13
+  confirm-slot: 11
+  cancel-slot: 15
+  confirm-material: LIME_CONCRETE
+  cancel-material: RED_CONCRETE
+  confirm-name: "<green><bold>Confirm</bold></green>"
+  cancel-name: "<red><bold>Cancel</bold></red>"
+
+my-items:
+  title: "<gold><bold>My Auctions</bold></gold>"
+  rows: 6
+  page-size: 36
