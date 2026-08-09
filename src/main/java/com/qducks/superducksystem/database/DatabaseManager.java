@@ -103,8 +103,8 @@ public final class DatabaseManager {
     private void createSchema(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
-            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 4 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
-            statement.executeUpdate("UPDATE schema_version SET version=4 WHERE version < 4");
+            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 5 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
+            statement.executeUpdate("UPDATE schema_version SET version=5 WHERE version < 5");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS players ("
                     + "uuid TEXT PRIMARY KEY NOT NULL,"
                     + "username TEXT NOT NULL,"
@@ -151,6 +151,18 @@ public final class DatabaseManager {
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_status_created ON auctions(status, created_at)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_seller_status ON auctions(seller_uuid, status)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_expires ON auctions(status, expires_at)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS auction_claims ("
+                    + "id TEXT PRIMARY KEY NOT NULL,"
+                    + "listing_id TEXT NOT NULL,"
+                    + "player_uuid TEXT NOT NULL,"
+                    + "item_data BLOB NOT NULL,"
+                    + "reason TEXT NOT NULL,"
+                    + "status TEXT NOT NULL,"
+                    + "created_at INTEGER NOT NULL,"
+                    + "claimed_at INTEGER,"
+                    + "UNIQUE(listing_id, reason)"
+                    + ")");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_claims_player_status ON auction_claims(player_uuid, status, created_at)");
         }
     }
 
