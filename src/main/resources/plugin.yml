@@ -39,6 +39,10 @@ commands:
     description: Open your player settings
     usage: /settings
     permission: superduck.settings
+  shop:
+    description: Open the server shop
+    usage: /shop
+    permission: superduck.shop
   sell:
     description: Open the sell menu
     usage: /sell
@@ -68,6 +72,9 @@ permissions:
     default: true
   superduck.settings:
     description: Open your player settings
+    default: true
+  superduck.shop:
+    description: Open the server shop
     default: true
   superduck.sell:
     description: Open the sell menu
