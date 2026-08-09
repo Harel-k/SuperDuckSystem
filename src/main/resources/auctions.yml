@@ -103,6 +103,10 @@ confirmation:
   rows: 3
   buy-title: "<gold><bold>Confirm Purchase</bold></gold>"
   sell-title: "<gold><bold>Confirm Listing</bold></gold>"
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
   item-slot: 13
   confirm-slot: 11
   cancel-slot: 15
@@ -115,3 +119,48 @@ my-items:
   title: "<gold><bold>My Auctions</bold></gold>"
   rows: 6
   page-size: 36
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  content-slots:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+    - 24
+    - 25
+    - 26
+    - 27
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - 33
+    - 34
+    - 35
+  back:
+    slot: 49
+    material: BARRIER
+    name: "<red>Back</red>"
