@@ -6,7 +6,7 @@ server:
 
 modules:
   economy: true
-  shop: false
+  shop: true
   auctions: false
   orders: false
   crates: false
