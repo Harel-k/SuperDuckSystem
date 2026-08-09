@@ -47,6 +47,11 @@ commands:
     description: Open the sell menu
     usage: /sell
     permission: superduck.sell
+  auctionhouse:
+    description: Open and use the Auction House
+    usage: /ah [search] or /ah sell <price>
+    aliases: [ah]
+    permission: superduck.auction
 
 permissions:
   superduck.command:
@@ -78,6 +83,12 @@ permissions:
     default: true
   superduck.sell:
     description: Open the sell menu
+    default: true
+  superduck.auction:
+    description: Use the Auction House
+    default: true
+  superduck.auction.slots.3:
+    description: Allow three active auction listings
     default: true
   superduck.admin.economy:
     description: Manage player money and Ducks
