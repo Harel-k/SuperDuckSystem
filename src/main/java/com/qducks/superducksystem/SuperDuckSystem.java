@@ -2,6 +2,7 @@ package com.qducks.superducksystem;
 
 import com.qducks.superducksystem.command.SuperDuckCommand;
 import com.qducks.superducksystem.config.ConfigManager;
+import com.qducks.superducksystem.crate.KeyService;
 import com.qducks.superducksystem.database.DatabaseManager;
 import com.qducks.superducksystem.economy.EconomyService;
 import com.qducks.superducksystem.gui.GuiManager;
@@ -29,6 +30,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private VirtualSignInputService signInputService;
     private RankPerkService rankPerkService;
     private StatsService statsService;
+    private KeyService keyService;
 
     @Override
     public void onEnable() {
@@ -44,6 +46,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.guiManager = new GuiManager(this);
         this.signInputService = new VirtualSignInputService(this);
         this.statsService = new StatsService(this);
+        this.keyService = new KeyService(this);
 
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
@@ -127,5 +130,9 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public StatsService stats() {
         return statsService;
+    }
+
+    public KeyService keys() {
+        return keyService;
     }
 }
