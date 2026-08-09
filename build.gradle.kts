@@ -25,6 +25,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.12.3")
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
+    compileOnly("net.luckperms:api:5.5")
 }
 
 java {
