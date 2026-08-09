@@ -7,6 +7,7 @@ import com.qducks.superducksystem.economy.EconomyModule;
 import com.qducks.superducksystem.order.OrderModule;
 import com.qducks.superducksystem.settings.SettingsModule;
 import com.qducks.superducksystem.shop.ShopModule;
+import com.qducks.superducksystem.stats.StatsModule;
 import com.qducks.superducksystem.tool.CustomToolsModule;
 
 import java.util.Collections;
@@ -29,6 +30,7 @@ public final class ModuleManager {
         register(new OrderModule(plugin));
         register(new CrateModule(plugin));
         register(new CustomToolsModule(plugin));
+        register(new StatsModule(plugin));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
