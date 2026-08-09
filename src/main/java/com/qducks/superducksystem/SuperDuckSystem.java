@@ -9,6 +9,7 @@ import com.qducks.superducksystem.integration.IntegrationManager;
 import com.qducks.superducksystem.item.CustomItemService;
 import com.qducks.superducksystem.module.ModuleManager;
 import com.qducks.superducksystem.player.PlayerProfileListener;
+import com.qducks.superducksystem.settings.SettingsService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -16,6 +17,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private ConfigManager configManager;
     private DatabaseManager databaseManager;
     private EconomyService economyService;
+    private SettingsService settingsService;
     private IntegrationManager integrationManager;
     private ModuleManager moduleManager;
     private CustomItemService customItemService;
@@ -30,6 +32,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.databaseManager.start();
 
         this.economyService = new EconomyService(this);
+        this.settingsService = new SettingsService(this);
         this.customItemService = new CustomItemService(this);
         this.guiManager = new GuiManager(this);
 
@@ -73,6 +76,10 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public EconomyService economy() {
         return economyService;
+    }
+
+    public SettingsService settings() {
+        return settingsService;
     }
 
     public IntegrationManager integrations() {

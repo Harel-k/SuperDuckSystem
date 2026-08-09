@@ -1,0 +1,18 @@
+# Default values for /settings.
+# Individual players can override these values once the settings UI is enabled.
+
+defaults:
+  pay-notifications: true
+  auction-notifications: true
+  order-notifications: true
+  crate-broadcasts: true
+  sounds: true
+  particles: true
+
+  # Confirmation controls used by upcoming gameplay modules.
+  auction-sell-confirmation: true
+  auction-buy-confirmation: true
+  order-create-confirmation: true
+
+  # Players who enable this can skip the extra purchase confirmation in /ah.
+  instant-auction-purchase: false

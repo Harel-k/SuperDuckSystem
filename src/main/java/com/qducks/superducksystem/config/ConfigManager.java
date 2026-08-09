@@ -11,6 +11,7 @@ public final class ConfigManager {
     private FileConfiguration messages;
     private FileConfiguration economy;
     private FileConfiguration gui;
+    private FileConfiguration settings;
 
     public ConfigManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -21,6 +22,7 @@ public final class ConfigManager {
         saveResourceIfMissing("messages.yml");
         saveResourceIfMissing("economy.yml");
         saveResourceIfMissing("gui.yml");
+        saveResourceIfMissing("settings.yml");
         reloadSecondaryFiles();
     }
 
@@ -45,6 +47,10 @@ public final class ConfigManager {
         return gui;
     }
 
+    public FileConfiguration settings() {
+        return settings;
+    }
+
     public String serverName() {
         return main().getString("server.name", "Server");
     }
@@ -53,6 +59,7 @@ public final class ConfigManager {
         messages = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "messages.yml"));
         economy = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "economy.yml"));
         gui = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "gui.yml"));
+        settings = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "settings.yml"));
     }
 
     private void saveResourceIfMissing(String name) {

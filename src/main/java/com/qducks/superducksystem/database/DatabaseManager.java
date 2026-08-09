@@ -103,8 +103,8 @@ public final class DatabaseManager {
     private void createSchema(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
-            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 2 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
-            statement.executeUpdate("UPDATE schema_version SET version=2 WHERE version < 2");
+            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 3 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
+            statement.executeUpdate("UPDATE schema_version SET version=3 WHERE version < 3");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS players ("
                     + "uuid TEXT PRIMARY KEY NOT NULL,"
                     + "username TEXT NOT NULL,"
@@ -128,6 +128,12 @@ public final class DatabaseManager {
                     + ")");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transactions_actor ON transactions(actor_uuid, created_at)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transactions_target ON transactions(target_uuid, created_at)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS player_settings ("
+                    + "uuid TEXT NOT NULL,"
+                    + "setting TEXT NOT NULL,"
+                    + "value INTEGER NOT NULL,"
+                    + "PRIMARY KEY(uuid, setting)"
+                    + ")");
         }
     }
 

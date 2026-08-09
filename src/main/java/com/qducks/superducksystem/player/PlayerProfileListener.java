@@ -6,6 +6,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.concurrent.CompletableFuture;
+
 public final class PlayerProfileListener implements Listener {
     private final SuperDuckSystem plugin;
 
@@ -20,8 +22,11 @@ public final class PlayerProfileListener implements Listener {
                 event.getPlayer().getName(),
                 System.currentTimeMillis()
         );
-        plugin.economy().warm(event.getPlayer().getUniqueId()).exceptionally(error -> {
-            plugin.getLogger().warning("Could not warm economy profile for " + event.getPlayer().getName() + ": " + error.getMessage());
+        CompletableFuture.allOf(
+                plugin.economy().warm(event.getPlayer().getUniqueId()),
+                plugin.settings().warm(event.getPlayer().getUniqueId())
+        ).exceptionally(error -> {
+            plugin.getLogger().warning("Could not warm SuperDuck profile for " + event.getPlayer().getName() + ": " + error.getMessage());
             return null;
         });
     }
@@ -29,5 +34,6 @@ public final class PlayerProfileListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         plugin.economy().unload(event.getPlayer().getUniqueId());
+        plugin.settings().unload(event.getPlayer().getUniqueId());
     }
 }
