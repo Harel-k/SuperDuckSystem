@@ -136,9 +136,15 @@ public final class AuctionMenu {
             ItemStack searchItem = controlItem(config, "menu.search", Material.OAK_SIGN, "<aqua><bold>Search</bold></aqua>",
                     Map.of("search", currentSearch));
             gui.set(searchSlot, new GuiButton(searchItem, context -> {
-                context.player().closeInventory();
-                messages.send(context.player(), "auction.search-hint",
-                        "<yellow>Search with <white>/ah &lt;item&gt;</white> for now.</yellow>");
+                Player searchPlayer = context.player();
+                String initialSearch = page.search();
+                plugin.signInput().request(searchPlayer, initialSearch, input ->
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            if (searchPlayer.isOnline()) {
+                                open(searchPlayer, input, page.sort(), 0);
+                            }
+                        })
+                );
             }));
         }
 
