@@ -1,6 +1,6 @@
 # SuperDuckSystem Crates & Keys configuration
 # Keys are DIGITAL. Players earn them from online playtime milestones and other rewards.
-# Physical crate models are intentionally not used; crate opening will use inventory/scroll GUIs.
+# Physical crate models are intentionally not used; crate opening uses inventory/scroll GUIs.
 
 playtime:
   # Completed milestones are permanent. Leaving only resets progress on the current milestone.
@@ -35,6 +35,30 @@ key-menu:
     slot: 49
     material: CLOCK
     name: "<aqua><bold>Playtime Key Progress</bold></aqua>"
+
+crate-menu:
+  title: "<gold><bold>Crates</bold></gold>"
+  rows: 6
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  info:
+    slot: 49
+    material: BOOK
+    name: "<aqua><bold>Crate Info</bold></aqua>"
+
+# Used only by crates with opening-style: SCROLL.
+scroll:
+  title: "<gold><bold>Opening %crate%</bold></gold>"
+  rows: 3
+  animation-ticks: 60
+  step-ticks: 2
+  slots: [9, 10, 11, 12, 13, 14, 15, 16, 17]
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
 
 keys:
   starter:
@@ -95,11 +119,13 @@ keys:
       - "<yellow>Special QDucks crate.</yellow>"
 
 # Loot pools are deliberately conservative defaults and are fully editable.
-# weight is relative chance, not a percentage. Supported reward types will be ITEM, MONEY, DUCKS and KEY.
+# weight is relative chance, not a percentage. Reward types: ITEM, MONEY, DUCKS and KEY.
 crates:
   starter:
     key: starter
     display-name: "Starter Crate"
+    menu-slot: 10
+    menu-material: BARREL
     opening-style: QUICK
     loot:
       - type: ITEM
@@ -125,6 +151,8 @@ crates:
   common:
     key: common
     display-name: "Common Crate"
+    menu-slot: 12
+    menu-material: CHEST
     opening-style: QUICK
     loot:
       - type: ITEM
@@ -162,6 +190,8 @@ crates:
   rare:
     key: rare
     display-name: "Rare Crate"
+    menu-slot: 14
+    menu-material: BLUE_SHULKER_BOX
     opening-style: SCROLL
     loot:
       - type: ITEM
@@ -186,6 +216,8 @@ crates:
   epic:
     key: epic
     display-name: "Epic Crate"
+    menu-slot: 16
+    menu-material: PURPLE_SHULKER_BOX
     opening-style: SCROLL
     loot:
       - type: ITEM
@@ -210,6 +242,8 @@ crates:
   legendary:
     key: legendary
     display-name: "Legendary Crate"
+    menu-slot: 30
+    menu-material: YELLOW_SHULKER_BOX
     opening-style: SCROLL
     loot:
       - type: ITEM
@@ -234,6 +268,8 @@ crates:
   duck:
     key: duck
     display-name: "Duck Crate"
+    menu-slot: 32
+    menu-material: GOLD_BLOCK
     opening-style: SCROLL
     loot:
       - type: MONEY
