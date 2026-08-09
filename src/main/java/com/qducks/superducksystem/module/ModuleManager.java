@@ -5,6 +5,7 @@ import com.qducks.superducksystem.auction.AuctionModule;
 import com.qducks.superducksystem.crate.CrateModule;
 import com.qducks.superducksystem.economy.EconomyModule;
 import com.qducks.superducksystem.order.OrderModule;
+import com.qducks.superducksystem.reward.RewardsModule;
 import com.qducks.superducksystem.settings.SettingsModule;
 import com.qducks.superducksystem.shop.ShopModule;
 import com.qducks.superducksystem.stats.StatsModule;
@@ -31,44 +32,31 @@ public final class ModuleManager {
         register(new CrateModule(plugin, plugin.keys()));
         register(new CustomToolsModule(plugin));
         register(new StatsModule(plugin));
+        register(new RewardsModule(plugin, plugin.rewards()));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
     public void register(SuperDuckModule module) {
         String id = module.id().toLowerCase();
-        if (modules.containsKey(id)) {
-            throw new IllegalArgumentException("Duplicate module id: " + id);
-        }
+        if (modules.containsKey(id)) throw new IllegalArgumentException("Duplicate module id: " + id);
         modules.put(id, module);
-        if (plugin.getConfig().getBoolean("modules." + id, false)) {
-            module.enable();
-        }
+        if (plugin.getConfig().getBoolean("modules." + id, false)) module.enable();
     }
 
-    public Map<String, SuperDuckModule> all() {
-        return Collections.unmodifiableMap(modules);
-    }
+    public Map<String, SuperDuckModule> all() { return Collections.unmodifiableMap(modules); }
 
     public void reload() {
         for (SuperDuckModule module : modules.values()) {
-            if (!plugin.getConfig().getBoolean("modules." + module.id().toLowerCase(), false)) {
-                continue;
-            }
-            try {
-                module.reload();
-            } catch (Exception exception) {
-                plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage());
-            }
+            if (!plugin.getConfig().getBoolean("modules." + module.id().toLowerCase(), false)) continue;
+            try { module.reload(); }
+            catch (Exception exception) { plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage()); }
         }
     }
 
     public void shutdown() {
         for (SuperDuckModule module : modules.values()) {
-            try {
-                module.disable();
-            } catch (Exception exception) {
-                plugin.getLogger().severe("Failed to disable module " + module.id() + ": " + exception.getMessage());
-            }
+            try { module.disable(); }
+            catch (Exception exception) { plugin.getLogger().severe("Failed to disable module " + module.id() + ": " + exception.getMessage()); }
         }
     }
 }
