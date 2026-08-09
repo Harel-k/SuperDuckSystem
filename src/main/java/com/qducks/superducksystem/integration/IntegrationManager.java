@@ -24,7 +24,7 @@ public final class IntegrationManager {
         vaultUnlocked = enabledByConfig("vaultunlocked") && Bukkit.getPluginManager().isPluginEnabled("VaultUnlocked");
 
         if (enabledByConfig("floodgate") && Bukkit.getPluginManager().isPluginEnabled("floodgate")) {
-            bedrockService = new FloodgateBedrockService();
+            bedrockService = new FloodgateBedrockService(plugin);
         }
 
         if (placeholderApi) {
