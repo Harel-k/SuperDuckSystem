@@ -1,0 +1,26 @@
+name: SuperDuckSystem
+version: '${version}'
+main: com.qducks.superducksystem.SuperDuckSystem
+api-version: '1.21.11'
+description: Custom gameplay systems for QDucks SMP
+authors: [QDucks]
+website: https://qducks.com
+softdepend: [PlaceholderAPI, floodgate, LuckPerms, VaultUnlocked]
+
+commands:
+  superduck:
+    description: SuperDuckSystem help and administration
+    usage: /superduck
+    aliases: [sds]
+    permission: superduck.command
+
+permissions:
+  superduck.command:
+    description: Use /superduck
+    default: true
+  superduck.admin.status:
+    description: View SuperDuckSystem status
+    default: op
+  superduck.admin.reload:
+    description: Reload SuperDuckSystem configuration
+    default: op
