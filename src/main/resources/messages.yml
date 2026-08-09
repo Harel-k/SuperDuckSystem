@@ -1,0 +1,11 @@
+help:
+  header: "<aqua><bold>SuperDuckSystem</bold></aqua> <gray>v%version%</gray>"
+  line: "<gray>Use <white>/%label% status</white> to view system status.</gray>"
+
+errors:
+  no-permission: "<red>You do not have permission to do that.</red>"
+  unknown-subcommand: "<red>Unknown subcommand.</red>"
+
+admin:
+  reloaded: "<green>SuperDuckSystem configuration reloaded.</green>"
+  status-header: "<aqua><bold>SuperDuckSystem</bold></aqua> <gray>Status</gray>"
