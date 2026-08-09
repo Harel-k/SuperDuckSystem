@@ -103,8 +103,8 @@ public final class DatabaseManager {
     private void createSchema(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
-            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 5 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
-            statement.executeUpdate("UPDATE schema_version SET version=5 WHERE version < 5");
+            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 6 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
+            statement.executeUpdate("UPDATE schema_version SET version=6 WHERE version < 6");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS players ("
                     + "uuid TEXT PRIMARY KEY NOT NULL,"
                     + "username TEXT NOT NULL,"
@@ -163,6 +163,45 @@ public final class DatabaseManager {
                     + "UNIQUE(listing_id, reason)"
                     + ")");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_claims_player_status ON auction_claims(player_uuid, status, created_at)");
+
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS orders ("
+                    + "id TEXT PRIMARY KEY NOT NULL,"
+                    + "buyer_uuid TEXT NOT NULL,"
+                    + "buyer_name TEXT NOT NULL,"
+                    + "item_data BLOB NOT NULL,"
+                    + "item_material TEXT NOT NULL,"
+                    + "search_text TEXT NOT NULL,"
+                    + "total_amount INTEGER NOT NULL,"
+                    + "remaining_amount INTEGER NOT NULL,"
+                    + "price_each TEXT NOT NULL,"
+                    + "escrow_remaining TEXT NOT NULL,"
+                    + "created_at INTEGER NOT NULL,"
+                    + "status TEXT NOT NULL"
+                    + ")");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at)");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_orders_buyer_status ON orders(buyer_uuid, status)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS order_fills ("
+                    + "id TEXT PRIMARY KEY NOT NULL,"
+                    + "order_id TEXT NOT NULL,"
+                    + "seller_uuid TEXT NOT NULL,"
+                    + "seller_name TEXT NOT NULL,"
+                    + "amount INTEGER NOT NULL,"
+                    + "payout TEXT NOT NULL,"
+                    + "created_at INTEGER NOT NULL"
+                    + ")");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_fills_order ON order_fills(order_id, created_at)");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_fills_seller ON order_fills(seller_uuid, created_at)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS order_claims ("
+                    + "id TEXT PRIMARY KEY NOT NULL,"
+                    + "order_id TEXT NOT NULL,"
+                    + "player_uuid TEXT NOT NULL,"
+                    + "item_data BLOB NOT NULL,"
+                    + "amount INTEGER NOT NULL,"
+                    + "status TEXT NOT NULL,"
+                    + "created_at INTEGER NOT NULL,"
+                    + "claimed_at INTEGER"
+                    + ")");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_claims_player_status ON order_claims(player_uuid, status, created_at)");
         }
     }
 
