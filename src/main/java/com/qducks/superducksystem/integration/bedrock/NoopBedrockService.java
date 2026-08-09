@@ -12,4 +12,9 @@ public final class NoopBedrockService implements BedrockService {
     public boolean isBedrock(Player player) {
         return false;
     }
+
+    @Override
+    public boolean openSettings(Player player) {
+        return false;
+    }
 }
