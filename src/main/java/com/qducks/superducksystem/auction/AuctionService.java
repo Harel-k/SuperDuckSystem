@@ -171,17 +171,74 @@ public final class AuctionService {
         });
     }
 
+    public CompletableFuture<List<AuctionClaim>> pendingClaims(UUID playerUuid) {
+        long now = System.currentTimeMillis();
+        return plugin.database().submit(connection -> {
+            expireListings(connection, now);
+            List<AuctionClaim> claims = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT * FROM auction_claims WHERE player_uuid=? AND status='PENDING' ORDER BY created_at ASC")) {
+                statement.setString(1, playerUuid.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        claims.add(readClaim(result));
+                    }
+                }
+            }
+            return claims;
+        });
+    }
+
+    public CompletableFuture<AuctionClaim> claim(UUID playerUuid, UUID claimId) {
+        long now = System.currentTimeMillis();
+        return plugin.database().submit(connection -> {
+            boolean oldAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                AuctionClaim claim;
+                try (PreparedStatement query = connection.prepareStatement(
+                        "SELECT * FROM auction_claims WHERE id=? AND player_uuid=? AND status='PENDING'")) {
+                    query.setString(1, claimId.toString());
+                    query.setString(2, playerUuid.toString());
+                    try (ResultSet result = query.executeQuery()) {
+                        if (!result.next()) {
+                            throw new ClaimUnavailableException();
+                        }
+                        claim = readClaim(result);
+                    }
+                }
+                try (PreparedStatement update = connection.prepareStatement(
+                        "UPDATE auction_claims SET status='CLAIMED', claimed_at=? WHERE id=? AND player_uuid=? AND status='PENDING'")) {
+                    update.setLong(1, now);
+                    update.setString(2, claimId.toString());
+                    update.setString(3, playerUuid.toString());
+                    if (update.executeUpdate() != 1) {
+                        throw new ClaimUnavailableException();
+                    }
+                }
+                connection.commit();
+                return claim;
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(oldAutoCommit);
+            }
+        });
+    }
+
     public CompletableFuture<PurchaseResult> purchase(UUID buyerUuid, UUID listingId) {
         long now = System.currentTimeMillis();
         return plugin.database().submit(connection -> {
             boolean oldAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                AuctionListing listing = findForUpdate(connection, listingId);
+                AuctionListing listing = findListing(connection, listingId);
                 if (listing == null || listing.status() != AuctionStatus.LISTED) {
                     throw new ListingUnavailableException();
                 }
                 if (listing.expiresAt() <= now) {
+                    createClaim(connection, listing.id(), listing.sellerUuid(), listing.item(), AuctionClaim.Reason.RETURN, now);
                     markStatus(connection, listingId, AuctionStatus.EXPIRED, null, null);
                     connection.commit();
                     throw new ListingUnavailableException();
@@ -199,6 +256,10 @@ public final class AuctionService {
                         TransactionType.AUCTION_BUY
                 );
 
+                UUID claimId = createClaim(
+                        connection, listing.id(), buyerUuid, listing.item(), AuctionClaim.Reason.PURCHASE, now
+                );
+
                 try (PreparedStatement update = connection.prepareStatement(
                         "UPDATE auctions SET status=?, buyer_uuid=?, sold_at=? WHERE id=? AND status=?")) {
                     update.setString(1, AuctionStatus.SOLD.name());
@@ -213,7 +274,7 @@ public final class AuctionService {
 
                 connection.commit();
                 plugin.economy().publishTransfer(buyerUuid, listing.sellerUuid(), CurrencyType.MONEY, transfer);
-                return new PurchaseResult(listing, transfer);
+                return new PurchaseResult(listing, transfer, claimId);
             } catch (Exception exception) {
                 if (!connection.getAutoCommit()) {
                     connection.rollback();
@@ -231,11 +292,12 @@ public final class AuctionService {
             boolean oldAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                AuctionListing listing = findForUpdate(connection, listingId);
+                AuctionListing listing = findListing(connection, listingId);
                 if (listing == null || !listing.sellerUuid().equals(sellerUuid) || listing.status() != AuctionStatus.LISTED) {
                     throw new ListingUnavailableException();
                 }
                 AuctionStatus next = listing.expiresAt() <= now ? AuctionStatus.EXPIRED : AuctionStatus.CANCELLED;
+                createClaim(connection, listing.id(), sellerUuid, listing.item(), AuctionClaim.Reason.RETURN, now);
                 markStatus(connection, listingId, next, null, null);
                 connection.commit();
                 return new AuctionListing(
@@ -248,25 +310,6 @@ public final class AuctionService {
             } finally {
                 connection.setAutoCommit(oldAutoCommit);
             }
-        });
-    }
-
-    public CompletableFuture<Void> markClaimed(UUID sellerUuid, UUID listingId, AuctionStatus expectedStatus) {
-        if (expectedStatus != AuctionStatus.CANCELLED && expectedStatus != AuctionStatus.EXPIRED) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Only returned auctions can be claimed"));
-        }
-        return plugin.database().submit(connection -> {
-            try (PreparedStatement statement = connection.prepareStatement(
-                    "UPDATE auctions SET status=? WHERE id=? AND seller_uuid=? AND status=?")) {
-                statement.setString(1, AuctionStatus.CLAIMED.name());
-                statement.setString(2, listingId.toString());
-                statement.setString(3, sellerUuid.toString());
-                statement.setString(4, expectedStatus.name());
-                if (statement.executeUpdate() != 1) {
-                    throw new ListingUnavailableException();
-                }
-            }
-            return null;
         });
     }
 
@@ -293,6 +336,19 @@ public final class AuctionService {
     }
 
     private void expireListings(Connection connection, long now) throws SQLException {
+        List<AuctionListing> expired = new ArrayList<>();
+        try (PreparedStatement query = connection.prepareStatement(
+                "SELECT * FROM auctions WHERE status='LISTED' AND expires_at<=?")) {
+            query.setLong(1, now);
+            try (ResultSet result = query.executeQuery()) {
+                while (result.next()) {
+                    expired.add(readListing(result));
+                }
+            }
+        }
+        for (AuctionListing listing : expired) {
+            createClaim(connection, listing.id(), listing.sellerUuid(), listing.item(), AuctionClaim.Reason.RETURN, now);
+        }
         try (PreparedStatement statement = connection.prepareStatement(
                 "UPDATE auctions SET status=? WHERE status=? AND expires_at<=?")) {
             statement.setString(1, AuctionStatus.EXPIRED.name());
@@ -302,7 +358,42 @@ public final class AuctionService {
         }
     }
 
-    private AuctionListing findForUpdate(Connection connection, UUID listingId) throws SQLException {
+    private UUID createClaim(
+            Connection connection,
+            UUID listingId,
+            UUID playerUuid,
+            ItemStack item,
+            AuctionClaim.Reason reason,
+            long now
+    ) throws SQLException {
+        UUID claimId = UUID.randomUUID();
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT OR IGNORE INTO auction_claims(id, listing_id, player_uuid, item_data, reason, status, created_at) " +
+                        "VALUES(?, ?, ?, ?, ?, 'PENDING', ?)")) {
+            statement.setString(1, claimId.toString());
+            statement.setString(2, listingId.toString());
+            statement.setString(3, playerUuid.toString());
+            statement.setBytes(4, AuctionItemCodec.encode(item));
+            statement.setString(5, reason.name());
+            statement.setLong(6, now);
+            if (statement.executeUpdate() == 1) {
+                return claimId;
+            }
+        }
+        try (PreparedStatement query = connection.prepareStatement(
+                "SELECT id FROM auction_claims WHERE listing_id=? AND reason=?")) {
+            query.setString(1, listingId.toString());
+            query.setString(2, reason.name());
+            try (ResultSet result = query.executeQuery()) {
+                if (result.next()) {
+                    return UUID.fromString(result.getString("id"));
+                }
+            }
+        }
+        throw new SQLException("Could not create or resolve auction claim");
+    }
+
+    private AuctionListing findListing(Connection connection, UUID listingId) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT * FROM auctions WHERE id=?")) {
             statement.setString(1, listingId.toString());
             try (ResultSet result = statement.executeQuery()) {
@@ -345,6 +436,17 @@ public final class AuctionService {
         );
     }
 
+    private AuctionClaim readClaim(ResultSet result) throws SQLException {
+        return new AuctionClaim(
+                UUID.fromString(result.getString("id")),
+                UUID.fromString(result.getString("listing_id")),
+                UUID.fromString(result.getString("player_uuid")),
+                AuctionItemCodec.decode(result.getBytes("item_data")),
+                AuctionClaim.Reason.valueOf(result.getString("reason")),
+                result.getLong("created_at")
+        );
+    }
+
     private String searchText(ItemStack item) {
         StringBuilder text = new StringBuilder(item.getType().name().replace('_', ' '));
         ItemMeta meta = item.getItemMeta();
@@ -377,7 +479,11 @@ public final class AuctionService {
         }
     }
 
-    public record PurchaseResult(AuctionListing listing, EconomyService.TransferResult transfer) {
+    public record PurchaseResult(
+            AuctionListing listing,
+            EconomyService.TransferResult transfer,
+            UUID claimId
+    ) {
     }
 
     public static final class SlotLimitException extends RuntimeException {
@@ -421,6 +527,12 @@ public final class AuctionService {
     public static final class ListingUnavailableException extends RuntimeException {
         public ListingUnavailableException() {
             super("Auction listing is no longer available");
+        }
+    }
+
+    public static final class ClaimUnavailableException extends RuntimeException {
+        public ClaimUnavailableException() {
+            super("Auction claim is no longer available");
         }
     }
 }
