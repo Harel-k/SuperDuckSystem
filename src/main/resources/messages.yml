@@ -111,3 +111,11 @@ keys:
   invalid-key: "<red>That key does not exist.</red>"
   given: "<green>Gave <white>%amount%x %key%</white> to <white>%player%</white>.</green>"
   received: "<gold>You received <white>%amount%x %key%</white>.</gold>"
+
+crates:
+  usage: "<red>Usage: /crates [crate] or /crates preview <crate></red>"
+  invalid: "<red>That crate does not exist.</red>"
+  no-key: "<red>You do not have the required key.</red>"
+  open-failed: "<red>Could not open that crate.</red>"
+  reward-failed: "<red>The reward failed, so your key was refunded.</red>"
+  reward: "<gold>You won <white>%reward%</white> from %crate%!</gold>"
