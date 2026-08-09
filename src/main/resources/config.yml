@@ -10,7 +10,7 @@ modules:
   auctions: false
   orders: false
   crates: false
-  settings: false
+  settings: true
   custom-tools: false
 
 database:
