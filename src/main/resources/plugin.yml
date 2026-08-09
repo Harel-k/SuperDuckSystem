@@ -57,6 +57,11 @@ commands:
     usage: /order [search] or /order create
     aliases: [orders]
     permission: superduck.order
+  key:
+    description: View your keys and online key progress
+    usage: /key
+    aliases: [keys]
+    permission: superduck.key
 
 permissions:
   superduck.command:
@@ -101,6 +106,12 @@ permissions:
   superduck.order.slots.3:
     description: Allow three active buy orders
     default: true
+  superduck.key:
+    description: View digital keys and playtime progress
+    default: true
+  superduck.admin.keys:
+    description: Grant digital crate keys
+    default: op
   superduck.admin.economy:
     description: Manage player money and Ducks
     default: op
