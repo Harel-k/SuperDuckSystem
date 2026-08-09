@@ -22,15 +22,10 @@ public final class StatsService {
     private final AtomicBoolean starting = new AtomicBoolean();
     private volatile boolean ready;
 
-    public StatsService(SuperDuckSystem plugin) {
-        this.plugin = plugin;
-    }
+    public StatsService(SuperDuckSystem plugin) { this.plugin = plugin; }
 
     public void start() {
-        if (!plugin.database().isReady()) {
-            Bukkit.getScheduler().runTaskLater(plugin, this::start, 20L);
-            return;
-        }
+        if (!plugin.database().isReady()) { Bukkit.getScheduler().runTaskLater(plugin, this::start, 20L); return; }
         if (!starting.compareAndSet(false, true)) return;
         plugin.database().submit(connection -> {
             try (var statement = connection.createStatement()) {
@@ -42,10 +37,7 @@ public final class StatsService {
             return null;
         }).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
             starting.set(false);
-            if (error != null) {
-                plugin.getLogger().severe("Could not initialize stats tables: " + error.getMessage());
-                return;
-            }
+            if (error != null) { plugin.getLogger().severe("Could not initialize stats tables: " + error.getMessage()); return; }
             ready = true;
             for (Player player : Bukkit.getOnlinePlayers()) onJoin(player);
             plugin.getLogger().info("Player stats database ready.");
@@ -53,12 +45,7 @@ public final class StatsService {
     }
 
     public boolean ready() { return ready; }
-
-    public void onJoin(Player player) {
-        sessionStarted.put(player.getUniqueId(), System.currentTimeMillis());
-        load(player.getUniqueId());
-    }
-
+    public void onJoin(Player player) { sessionStarted.put(player.getUniqueId(), System.currentTimeMillis()); load(player.getUniqueId()); }
     public void onQuit(Player player) {
         UUID uuid = player.getUniqueId();
         long seconds = currentSessionSeconds(uuid);
@@ -66,12 +53,9 @@ public final class StatsService {
         if (seconds > 0) increment(uuid, "playtime_seconds", seconds);
         cache.remove(uuid);
     }
-
     public CompletableFuture<Void> incrementKill(UUID uuid) { return increment(uuid, "kills", 1); }
     public CompletableFuture<Void> incrementDeath(UUID uuid) { return increment(uuid, "deaths", 1); }
-    public CompletableFuture<Void> incrementCratesOpened(UUID uuid) {
-        return increment(uuid, "crates_opened", 1).thenCompose(ignored -> increment(uuid, "keys_used", 1));
-    }
+    public CompletableFuture<Void> incrementCratesOpened(UUID uuid) { return increment(uuid, "crates_opened", 1).thenCompose(ignored -> increment(uuid, "keys_used", 1)); }
 
     public Snapshot cached(UUID uuid) {
         MutableStats stats = cache.getOrDefault(uuid, new MutableStats());
@@ -102,9 +86,8 @@ public final class StatsService {
             try (PreparedStatement statement = connection.prepareStatement("SELECT kills,deaths,playtime_seconds,crates_opened,keys_used FROM player_stats WHERE uuid=?")) {
                 statement.setString(1, uuid.toString());
                 try (ResultSet result = statement.executeQuery()) {
-                    if (result.next()) {
-                        base = new Snapshot(result.getLong("kills"), result.getLong("deaths"), result.getLong("playtime_seconds") + currentSessionSeconds(uuid), result.getLong("crates_opened"), result.getLong("keys_used"));
-                    } else base = new Snapshot(0, 0, currentSessionSeconds(uuid), 0, 0);
+                    if (result.next()) base = new Snapshot(result.getLong("kills"), result.getLong("deaths"), result.getLong("playtime_seconds") + currentSessionSeconds(uuid), result.getLong("crates_opened"), result.getLong("keys_used"));
+                    else base = new Snapshot(0, 0, currentSessionSeconds(uuid), 0, 0);
                 }
             }
 
@@ -115,33 +98,28 @@ public final class StatsService {
 
             BigDecimal moneyReceived = sumTransaction(connection, uuid, "MONEY", "target_uuid", "PAY", Sign.POSITIVE);
             BigDecimal moneySent = sumTransaction(connection, uuid, "MONEY", "actor_uuid", "PAY", Sign.POSITIVE);
+            BigDecimal auctionSpent = sumTransaction(connection, uuid, "MONEY", "actor_uuid", "AUCTION_BUY", Sign.POSITIVE);
             BigDecimal moneyEarned = sumTransaction(connection, uuid, "MONEY", "target_uuid", null, Sign.POSITIVE);
             BigDecimal debitSpent = sumTransaction(connection, uuid, "MONEY", "target_uuid", null, Sign.NEGATIVE).abs();
-            BigDecimal moneySpent = debitSpent.add(moneySent);
+            BigDecimal moneySpent = debitSpent.add(moneySent).add(auctionSpent);
             BigDecimal sellEarned = sumTransaction(connection, uuid, "MONEY", "target_uuid", "SHOP_SELL", Sign.POSITIVE);
-            BigDecimal auctionEarned = sumTransaction(connection, uuid, "MONEY", "target_uuid", "AUCTION_SALE", Sign.POSITIVE);
+            BigDecimal auctionEarned = sumTransaction(connection, uuid, "MONEY", "target_uuid", "AUCTION_BUY", Sign.POSITIVE);
+            BigDecimal orderEarned = sumTransaction(connection, uuid, "MONEY", "target_uuid", "ORDER_FILL", Sign.POSITIVE);
             BigDecimal ducksEarned = sumTransaction(connection, uuid, "DUCKS", "target_uuid", null, Sign.POSITIVE);
             BigDecimal ducksSpent = sumTransaction(connection, uuid, "DUCKS", "target_uuid", null, Sign.NEGATIVE).abs();
 
             return new Profile(base, auctionsSold, ordersCreated, ordersFilled, itemsSold,
-                    moneyEarned, moneySpent, moneySent, moneyReceived, sellEarned, auctionEarned, ducksEarned, ducksSpent);
+                    moneyEarned, moneySpent, moneySent, moneyReceived, sellEarned, auctionEarned, orderEarned, ducksEarned, ducksSpent);
         });
     }
 
     public CompletableFuture<List<LeaderboardEntry>> leaderboard(Leaderboard type, int requestedLimit) {
         int limit = Math.max(1, Math.min(100, requestedLimit));
         if (type == Leaderboard.MONEY || type == Leaderboard.DUCKS) {
-            return plugin.economy().topBalances(type == Leaderboard.MONEY
-                            ? com.qducks.superducksystem.economy.CurrencyType.MONEY
-                            : com.qducks.superducksystem.economy.CurrencyType.DUCKS, limit)
+            return plugin.economy().topBalances(type == Leaderboard.MONEY ? com.qducks.superducksystem.economy.CurrencyType.MONEY : com.qducks.superducksystem.economy.CurrencyType.DUCKS, limit)
                     .thenApply(entries -> entries.stream().map(entry -> new LeaderboardEntry(entry.uuid(), entry.username(), entry.amount().doubleValue())).toList());
         }
-        String column = switch (type) {
-            case KILLS -> "kills";
-            case PLAYTIME -> "playtime_seconds";
-            case CRATES -> "crates_opened";
-            default -> "kills";
-        };
+        String column = switch (type) { case KILLS -> "kills"; case PLAYTIME -> "playtime_seconds"; case CRATES -> "crates_opened"; default -> "kills"; };
         return plugin.database().submit(connection -> {
             List<LeaderboardEntry> entries = new ArrayList<>();
             String sql = "SELECT s.uuid,p.username,s." + column + " AS value FROM player_stats s LEFT JOIN players p ON p.uuid=s.uuid ORDER BY s." + column + " DESC LIMIT ?";
@@ -161,10 +139,7 @@ public final class StatsService {
 
     private void load(UUID uuid) {
         if (!ready) return;
-        snapshot(uuid).exceptionally(error -> {
-            plugin.getLogger().warning("Could not load stats for " + uuid + ": " + error.getMessage());
-            return null;
-        });
+        snapshot(uuid).exceptionally(error -> { plugin.getLogger().warning("Could not load stats for " + uuid + ": " + error.getMessage()); return null; });
     }
 
     private CompletableFuture<Void> increment(UUID uuid, String column, long amount) {
@@ -172,9 +147,7 @@ public final class StatsService {
         return plugin.database().submit(connection -> {
             ensureRow(connection, uuid);
             try (PreparedStatement statement = connection.prepareStatement("UPDATE player_stats SET " + column + "=" + column + "+? WHERE uuid=?")) {
-                statement.setLong(1, amount);
-                statement.setString(2, uuid.toString());
-                statement.executeUpdate();
+                statement.setLong(1, amount); statement.setString(2, uuid.toString()); statement.executeUpdate();
             }
             return null;
         }).thenAccept(ignored -> cache.compute(uuid, (key, old) -> {
@@ -192,9 +165,7 @@ public final class StatsService {
     }
 
     private void ensureRow(java.sql.Connection connection, UUID uuid) throws Exception {
-        try (PreparedStatement statement = connection.prepareStatement("INSERT OR IGNORE INTO player_stats(uuid) VALUES(?)")) {
-            statement.setString(1, uuid.toString()); statement.executeUpdate();
-        }
+        try (PreparedStatement statement = connection.prepareStatement("INSERT OR IGNORE INTO player_stats(uuid) VALUES(?)")) { statement.setString(1, uuid.toString()); statement.executeUpdate(); }
     }
 
     private long scalarLong(java.sql.Connection connection, String sql, UUID uuid) throws Exception {
@@ -208,8 +179,7 @@ public final class StatsService {
         String sql = "SELECT amount FROM transactions WHERE currency=? AND " + identityColumn + "=?" + (type == null ? "" : " AND type=?");
         BigDecimal total = BigDecimal.ZERO;
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, currency);
-            statement.setString(2, uuid.toString());
+            statement.setString(1, currency); statement.setString(2, uuid.toString());
             if (type != null) statement.setString(3, type);
             try (ResultSet result = statement.executeQuery()) {
                 while (result.next()) {
@@ -236,21 +206,17 @@ public final class StatsService {
 
     public record Profile(Snapshot base, long auctionsSold, long ordersCreated, long ordersFilled, long itemsSoldIntoOrders,
                           BigDecimal moneyEarned, BigDecimal moneySpent, BigDecimal moneySent, BigDecimal moneyReceived,
-                          BigDecimal sellEarned, BigDecimal auctionEarned, BigDecimal ducksEarned, BigDecimal ducksSpent) {
+                          BigDecimal sellEarned, BigDecimal auctionEarned, BigDecimal orderEarned, BigDecimal ducksEarned, BigDecimal ducksSpent) {
         static Profile empty(Snapshot snapshot) {
             return new Profile(snapshot, 0, 0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
-                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
     }
 
     public record LeaderboardEntry(UUID uuid, String username, double value) { }
 
     private static final class MutableStats {
-        private long kills;
-        private long deaths;
-        private long playtimeSeconds;
-        private long cratesOpened;
-        private long keysUsed;
+        private long kills, deaths, playtimeSeconds, cratesOpened, keysUsed;
         private MutableStats() { }
         private MutableStats(long kills, long deaths, long playtimeSeconds, long cratesOpened, long keysUsed) {
             this.kills = kills; this.deaths = deaths; this.playtimeSeconds = playtimeSeconds; this.cratesOpened = cratesOpened; this.keysUsed = keysUsed;
