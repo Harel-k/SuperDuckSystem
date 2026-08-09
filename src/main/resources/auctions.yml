@@ -171,11 +171,12 @@ confirmation:
 my-items:
   title: "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray>"
   rows: 6
-  page-size: 36
+  page-size: 45
   filler:
     enabled: true
     material: BLACK_STAINED_GLASS_PANE
     name: " "
+  # 45 visible market slots: enough for the default Duck+++ perk.
   content-slots:
     - 0
     - 1
@@ -213,6 +214,15 @@ my-items:
     - 33
     - 34
     - 35
+    - 36
+    - 37
+    - 38
+    - 39
+    - 40
+    - 41
+    - 42
+    - 43
+    - 44
   empty-slot:
     material: LIME_STAINED_GLASS_PANE
     name: "<green><bold>+ List Item</bold></green>"
