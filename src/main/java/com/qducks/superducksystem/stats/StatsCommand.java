@@ -1,6 +1,7 @@
 package com.qducks.superducksystem.stats;
 
 import com.qducks.superducksystem.SuperDuckSystem;
+import com.qducks.superducksystem.economy.CurrencyType;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -74,7 +75,15 @@ public final class StatsCommand implements CommandExecutor {
                 .replace("%auctions_sold%", Long.toString(profile.auctionsSold()))
                 .replace("%orders_created%", Long.toString(profile.ordersCreated()))
                 .replace("%orders_filled%", Long.toString(profile.ordersFilled()))
-                .replace("%items_sold_orders%", Long.toString(profile.itemsSoldIntoOrders()));
+                .replace("%items_sold_orders%", Long.toString(profile.itemsSoldIntoOrders()))
+                .replace("%money_earned%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.moneyEarned()))
+                .replace("%money_spent%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.moneySpent()))
+                .replace("%money_sent%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.moneySent()))
+                .replace("%money_received%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.moneyReceived()))
+                .replace("%sell_earned%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.sellEarned()))
+                .replace("%auction_earned%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.auctionEarned()))
+                .replace("%ducks_earned%", plugin.economy().formatter().format(CurrencyType.DUCKS, profile.ducksEarned()))
+                .replace("%ducks_spent%", plugin.economy().formatter().format(CurrencyType.DUCKS, profile.ducksSpent()));
     }
 
     private String formatTime(long seconds) {
