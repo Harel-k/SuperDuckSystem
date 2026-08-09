@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, dev]
 
+permissions:
+  contents: write
+
 concurrency:
   group: superduck-build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,8 +34,33 @@ jobs:
       - name: Build
         run: gradle clean build --stacktrace
 
-      - name: Upload plugin jar
+      - name: Prepare easy-download jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find build/libs -maxdepth 1 -type f -name 'SuperDuckSystem-*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -n 1)"
+          if [ -z "$JAR" ]; then
+            echo "Could not find the built SuperDuckSystem jar."
+            exit 1
+          fi
+          cp "$JAR" build/libs/SuperDuckSystem.jar
+
+      - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SuperDuckSystem-${{ github.sha }}
-          path: build/libs/SuperDuckSystem-*.jar
+          name: SuperDuckSystem-latest
+          path: build/libs/SuperDuckSystem.jar
+
+      - name: Publish latest dev jar
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release delete dev-latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create dev-latest build/libs/SuperDuckSystem.jar \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "SuperDuckSystem - Latest Dev Build" \
+            --notes "Automatically built from the latest successful dev commit. Download SuperDuckSystem.jar below and upload it to the server's plugins folder."
