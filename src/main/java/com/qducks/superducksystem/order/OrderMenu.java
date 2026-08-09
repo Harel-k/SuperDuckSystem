@@ -20,8 +20,13 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class OrderMenu {
@@ -31,6 +36,13 @@ public final class OrderMenu {
             9, 10, 11, 12, 13, 14, 15, 16, 17,
             18, 19, 20, 21, 22, 23, 24, 25, 26,
             27, 28, 29, 30, 31, 32, 33, 34, 35
+    );
+    private static final List<Integer> DEFAULT_PICKER_SLOTS = List.of(
+            0, 1, 2, 3, 4, 5, 6, 7, 8,
+            9, 10, 11, 12, 13, 14, 15, 16, 17,
+            18, 19, 20, 21, 22, 23, 24, 25, 26,
+            27, 28, 29, 30, 31, 32, 33, 34, 35,
+            36, 37, 38, 39, 40, 41, 42, 43, 44
     );
 
     private final SuperDuckSystem plugin;
@@ -44,6 +56,7 @@ public final class OrderMenu {
     }
 
     public void open(Player player, String search, OrderSort sort, int page) {
+        plugin.rankPerks().apply(player);
         FileConfiguration config = plugin.configs().orders();
         List<Integer> slots = contentSlots(config, "menu.content-slots", DEFAULT_CONTENT_SLOTS);
         int pageSize = Math.min(Math.max(1, config.getInt("menu.page-size", 36)), Math.max(1, slots.size()));
@@ -61,19 +74,117 @@ public final class OrderMenu {
         );
     }
 
+    /** Opens a searchable catalog of every orderable Minecraft item. */
     public void beginCreate(Player player) {
-        ItemStack held = player.getInventory().getItemInMainHand();
-        if (held.getType().isAir()) {
-            messages.send(player, "order.hold-item", "<red>Hold the item you want to order in your main hand.</red>");
-            return;
+        plugin.rankPerks().apply(player);
+        openItemPicker(player, "", 0);
+    }
+
+    private void openItemPicker(Player player, String requestedSearch, int requestedPage) {
+        FileConfiguration config = plugin.configs().orders();
+        String search = requestedSearch == null ? "" : requestedSearch.trim().toLowerCase(Locale.ROOT);
+        List<Integer> slots = contentSlots(config, "creation.item-picker.content-slots", DEFAULT_PICKER_SLOTS);
+        int pageSize = Math.max(1, Math.min(config.getInt("creation.item-picker.page-size", 45), slots.size()));
+        Set<Material> blocked = blockedMaterials(config.getStringList("creation.blocked-materials"));
+
+        List<Material> materials = Arrays.stream(Material.values())
+                .filter(Material::isItem)
+                .filter(material -> !material.isAir())
+                .filter(material -> !material.name().startsWith("LEGACY_"))
+                .filter(material -> !blocked.contains(material))
+                .filter(material -> search.isBlank() || searchableMaterial(material).contains(search))
+                .sorted(Comparator.comparing(Material::name))
+                .toList();
+
+        int pages = Math.max(1, (int) Math.ceil(materials.size() / (double) pageSize));
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+        int start = page * pageSize;
+        int end = Math.min(materials.size(), start + pageSize);
+
+        int rows = clampRows(config.getInt("creation.item-picker.rows", 6));
+        String title = config.getString("creation.item-picker.title", "<aqua><bold>Select Order Item</bold></aqua> <gray>%page%/%pages%</gray>")
+                .replace("%page%", Integer.toString(page + 1))
+                .replace("%pages%", Integer.toString(pages));
+        DuckGui gui = new DuckGui(plugin, rows, MINI.deserialize(title));
+        fill(gui, config, "creation.item-picker.filler");
+
+        int slotIndex = 0;
+        for (int i = start; i < end && slotIndex < slots.size(); i++) {
+            Material material = materials.get(i);
+            int slot = slots.get(slotIndex++);
+            if (!validSlot(gui, slot)) {
+                continue;
+            }
+            ItemStack icon = GuiItems.item(
+                    material,
+                    "<white>" + prettyMaterial(material) + "</white>",
+                    "<gray>Click to create a buy order for this item.</gray>"
+            );
+            gui.set(slot, new GuiButton(icon, context -> beginAmountInput(context.player(), new ItemStack(material))));
         }
 
-        ItemStack template = held.clone();
+        int previousSlot = config.getInt("creation.item-picker.previous.slot", 45);
+        if (page > 0 && validSlot(gui, previousSlot)) {
+            gui.set(previousSlot, new GuiButton(
+                    controlItem(config, "creation.item-picker.previous", Material.ARROW, "<yellow>Previous Page</yellow>"),
+                    context -> openItemPicker(context.player(), search, page - 1)
+            ));
+        }
+
+        int searchSlot = config.getInt("creation.item-picker.search.slot", 46);
+        if (validSlot(gui, searchSlot)) {
+            String displaySearch = search.isBlank() ? "All Items" : search;
+            gui.set(searchSlot, new GuiButton(
+                    controlItem(config, "creation.item-picker.search", Material.OAK_SIGN, "<aqua><bold>Search Items</bold></aqua>",
+                            Map.of("search", displaySearch)),
+                    context -> {
+                        Player searchPlayer = context.player();
+                        plugin.signInput().request(searchPlayer, search, input ->
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    if (searchPlayer.isOnline()) {
+                                        openItemPicker(searchPlayer, input, 0);
+                                    }
+                                })
+                        );
+                    }
+            ));
+        }
+
+        int clearSlot = config.getInt("creation.item-picker.clear-search.slot", 48);
+        if (!search.isBlank() && validSlot(gui, clearSlot)) {
+            gui.set(clearSlot, new GuiButton(
+                    controlItem(config, "creation.item-picker.clear-search", Material.MILK_BUCKET, "<red>Clear Search</red>"),
+                    context -> openItemPicker(context.player(), "", 0)
+            ));
+        }
+
+        int closeSlot = config.getInt("creation.item-picker.close.slot", 49);
+        if (validSlot(gui, closeSlot)) {
+            gui.set(closeSlot, new GuiButton(
+                    controlItem(config, "creation.item-picker.close", Material.BARRIER, "<red>Back</red>"),
+                    context -> openMyOrders(context.player())
+            ));
+        }
+
+        int nextSlot = config.getInt("creation.item-picker.next.slot", 53);
+        if (page + 1 < pages && validSlot(gui, nextSlot)) {
+            gui.set(nextSlot, new GuiButton(
+                    controlItem(config, "creation.item-picker.next", Material.ARROW, "<yellow>Next Page</yellow>"),
+                    context -> openItemPicker(context.player(), search, page + 1)
+            ));
+        }
+
+        gui.open(player);
+    }
+
+    private void beginAmountInput(Player player, ItemStack template) {
+        template = template.clone();
         template.setAmount(1);
+        ItemStack selected = template;
         String defaultAmount = plugin.configs().orders().getString("creation.default-amount-input", "64");
         messages.send(player, "order.enter-amount", "<yellow>Enter the amount you want on the sign.</yellow>");
         plugin.signInput().request(player, defaultAmount, input ->
-                Bukkit.getScheduler().runTask(plugin, () -> handleAmountInput(player, template, input))
+                Bukkit.getScheduler().runTask(plugin, () -> handleAmountInput(player, selected, input))
         );
     }
 
@@ -249,12 +360,13 @@ public final class OrderMenu {
         }
         int cancelSlot = config.getInt("confirmation.cancel-slot", 15);
         if (validSlot(gui, cancelSlot)) {
-            gui.set(cancelSlot, new GuiButton(cancelItem(config), context -> context.player().closeInventory()));
+            gui.set(cancelSlot, new GuiButton(cancelItem(config), context -> openItemPicker(context.player(), "", 0)));
         }
         gui.open(player);
     }
 
     private void createOrder(Player player, ItemStack template, int amount, BigDecimal priceEach) {
+        plugin.rankPerks().apply(player);
         player.closeInventory();
         service.createOrder(player.getUniqueId(), player.getName(), template, amount, priceEach, service.slotLimit(player))
                 .whenComplete((order, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
@@ -286,6 +398,7 @@ public final class OrderMenu {
                             "price_each", money(order.priceEach()),
                             "total", money(order.totalCost())
                     ));
+                    openMyOrders(player);
                 }));
     }
 
@@ -366,6 +479,7 @@ public final class OrderMenu {
     }
 
     private void openMyOrders(Player player) {
+        plugin.rankPerks().apply(player);
         var ordersFuture = service.buyerOrders(player.getUniqueId());
         var claimsFuture = service.pendingClaims(player.getUniqueId());
         ordersFuture.thenCombine(claimsFuture, MyOrdersData::new).whenComplete((data, error) ->
@@ -385,8 +499,13 @@ public final class OrderMenu {
     private void renderMyOrders(Player player, MyOrdersData data) {
         FileConfiguration config = plugin.configs().orders();
         int rows = clampRows(config.getInt("my-orders.rows", 6));
-        DuckGui gui = new DuckGui(plugin, rows,
-                MINI.deserialize(config.getString("my-orders.title", "<gold><bold>My Orders</bold></gold>")));
+        int limit = service.slotLimit(player);
+        long usedLong = data.orders().stream().filter(order -> order.status() == OrderStatus.OPEN).count();
+        int used = (int) Math.min(Integer.MAX_VALUE, usedLong);
+        String title = config.getString("my-orders.title", "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray>")
+                .replace("%used%", Integer.toString(used))
+                .replace("%limit%", Integer.toString(limit));
+        DuckGui gui = new DuckGui(plugin, rows, MINI.deserialize(title));
         fill(gui, config, "my-orders.filler");
         List<Integer> slots = contentSlots(config, "my-orders.content-slots", DEFAULT_CONTENT_SLOTS);
         int index = 0;
@@ -426,6 +545,20 @@ public final class OrderMenu {
             } else {
                 gui.setDisplay(slot, icon);
             }
+        }
+
+        int availableSlots = Math.max(0, limit - used);
+        for (int add = 0; add < availableSlots && index < slots.size(); add++) {
+            int slot = slots.get(index++);
+            if (!validSlot(gui, slot)) {
+                continue;
+            }
+            ItemStack empty = controlItem(config, "my-orders.empty-slot", Material.LIME_STAINED_GLASS_PANE,
+                    "<green><bold>+ Create Order</bold></green>", Map.of(
+                            "used", Integer.toString(used),
+                            "limit", Integer.toString(limit)
+                    ));
+            gui.set(slot, new GuiButton(empty, context -> beginCreate(context.player())));
         }
 
         int backSlot = config.getInt("my-orders.back.slot", 49);
@@ -470,6 +603,7 @@ public final class OrderMenu {
                     giveItemAmount(player, result.item(), result.amount());
                     messages.send(player, "order.claimed", "<green>Claimed <white>%amount%x</white> from your order.</green>",
                             Map.of("amount", Integer.toString(result.amount())));
+                    openMyOrders(player);
                 })
         );
     }
@@ -602,8 +736,6 @@ public final class OrderMenu {
 
     private void restoreItems(Player player, List<ItemStack> items) {
         if (!player.isOnline()) {
-            // The removed items only live in memory at this point. This branch is intentionally
-            // conservative during development; disconnect/crash recovery will be hardened before v1.
             return;
         }
         for (ItemStack item : items) {
@@ -627,6 +759,36 @@ public final class OrderMenu {
             }
             left -= size;
         }
+    }
+
+    private Set<Material> blockedMaterials(List<String> configured) {
+        Set<Material> result = new HashSet<>();
+        for (String raw : configured) {
+            Material found = Material.matchMaterial(raw);
+            if (found != null) {
+                result.add(found);
+            }
+        }
+        return result;
+    }
+
+    private String searchableMaterial(Material material) {
+        return material.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+    }
+
+    private String prettyMaterial(Material material) {
+        String[] words = material.name().toLowerCase(Locale.ROOT).split("_");
+        StringBuilder out = new StringBuilder();
+        for (String word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (!out.isEmpty()) {
+                out.append(' ');
+            }
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return out.toString();
     }
 
     private String money(BigDecimal amount) {
