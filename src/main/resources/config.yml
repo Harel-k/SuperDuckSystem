@@ -25,7 +25,7 @@ integrations:
   vaultunlocked: true
 
 # Rank perk values are fully configurable. The LuckPerms primary group is used when LuckPerms is available.
-# These are converted into the same numeric permissions used by the AH and Orders systems.
+# Market personal GUIs currently expose 45 slots, so staff is capped at 45 until paged personal menus are added.
 rank-perks:
   default:
     auction-slots: 3
@@ -46,17 +46,17 @@ rank-perks:
     auction-slots: 45
     order-slots: 45
   moderator:
-    auction-slots: 50
-    order-slots: 50
+    auction-slots: 45
+    order-slots: 45
   admin:
-    auction-slots: 60
-    order-slots: 60
+    auction-slots: 45
+    order-slots: 45
   developer:
-    auction-slots: 75
-    order-slots: 75
+    auction-slots: 45
+    order-slots: 45
   owner:
-    auction-slots: 100
-    order-slots: 100
+    auction-slots: 45
+    order-slots: 45
 
 custom-tools:
   duck-pickaxe:
