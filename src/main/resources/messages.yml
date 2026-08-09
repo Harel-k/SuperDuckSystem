@@ -64,7 +64,8 @@ auction:
   load-failed: "<red>Could not load the Auction House.</red>"
   sell-usage: "<red>Usage: /ah sell <price></red>"
   hold-item: "<red>Hold the item you want to sell in your main hand.</red>"
-  item-changed: "<red>Your held item changed. Run /ah sell again.</red>"
+  enter-price: "<yellow>Enter the listing price on the sign.</yellow>"
+  item-changed: "<red>That inventory stack changed. Choose the item again.</red>"
   own-item: "<red>You cannot buy your own auction.</red>"
   slot-limit: "<red>You are using all %limit% of your auction slots.</red>"
   price-range: "<red>Price must be between %minimum% and %maximum%.</red>"
@@ -76,13 +77,12 @@ auction:
   bought: "<green>Purchased the auction for %price%.</green>"
   sold-notification: "<green>Your auction sold for %price%.</green>"
   cancel-failed: "<red>Could not cancel that auction.</red>"
-  cancelled: "<green>Auction cancelled. The item is now in My Items.</green>"
-  claim-failed: "<yellow>Your item is still waiting in My Items. Open /ah and try again.</yellow>"
+  cancelled: "<green>Auction cancelled. The item is now in My Auctions.</green>"
+  claim-failed: "<yellow>Your item is still waiting in My Auctions. Open /ah and try again.</yellow>"
   claimed: "<green>Claimed your auction item.</green>"
 
 order:
   load-failed: "<red>Could not load Buy Orders.</red>"
-  hold-item: "<red>Hold the item you want to order in your main hand.</red>"
   enter-amount: "<yellow>Enter the amount you want on the sign.</yellow>"
   enter-price: "<yellow>Enter the price per item on the sign.</yellow>"
   invalid-amount: "<red>Enter a whole number between 1 and %maximum%.</red>"
@@ -103,3 +103,11 @@ order:
   cancelled: "<green>Order cancelled. Refunded %refund%.</green>"
   claim-failed: "<yellow>Those items are still waiting in My Orders.</yellow>"
   claimed: "<green>Claimed <white>%amount%x</white> from your order.</green>"
+
+keys:
+  usage: "<red>Usage: /key or /key give <player> <key> <amount></red>"
+  give-usage: "<red>Usage: /key give <player> <key> <amount></red>"
+  invalid-amount: "<red>Key amount must be a positive whole number.</red>"
+  invalid-key: "<red>That key does not exist.</red>"
+  given: "<green>Gave <white>%amount%x %key%</white> to <white>%player%</white>.</green>"
+  received: "<gold>You received <white>%amount%x %key%</white>.</gold>"
