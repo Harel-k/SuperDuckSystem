@@ -42,22 +42,26 @@ public final class GuiManager implements Listener {
 
         if (gui instanceof EditableDuckGui editable
                 && rawSlot >= 0
-                && rawSlot < topSize
-                && editable.isEditable(rawSlot)
                 && SAFE_EDIT_ACTIONS.contains(event.getAction())) {
-            event.setCancelled(false);
-            if (event.getWhoClicked() instanceof Player player) {
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    try {
-                        editable.handleEdit(player);
-                    } catch (Exception exception) {
-                        plugin.getLogger().severe("Editable GUI update handler failed: " + exception.getMessage());
-                    }
-                });
+            boolean playerInventorySlot = rawSlot >= topSize;
+            boolean allowedTopSlot = rawSlot < topSize && editable.isEditable(rawSlot);
+            if (playerInventorySlot || allowedTopSlot) {
+                event.setCancelled(false);
+                if (allowedTopSlot && event.getWhoClicked() instanceof Player player) {
+                    plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        try {
+                            editable.handleEdit(player);
+                        } catch (Exception exception) {
+                            plugin.getLogger().severe("Editable GUI update handler failed: " + exception.getMessage());
+                        }
+                    });
+                }
+                return;
             }
-            return;
         }
 
+        // Everything else is protected: shift-click, number-key swaps, collect-to-cursor, drops,
+        // protected top slots, and all shortcuts that could bypass the explicit input slot list.
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player player)) {
