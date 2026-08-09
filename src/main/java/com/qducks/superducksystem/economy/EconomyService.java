@@ -114,20 +114,12 @@ public final class EconomyService {
             boolean oldAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                BigDecimal fromBalance = readOrCreate(connection, from, currency);
-                BigDecimal toBalance = readOrCreate(connection, to, currency);
-                if (fromBalance.compareTo(amount) < 0) {
-                    throw new InsufficientFundsException(fromBalance, amount);
-                }
-                BigDecimal newFrom = fromBalance.subtract(amount);
-                BigDecimal newTo = toBalance.add(amount);
-                writeBalance(connection, from, currency, newFrom);
-                writeBalance(connection, to, currency, newTo);
-                record(connection, TransactionType.PAY, currency, from, to, amount);
+                TransferResult result = transferWithinTransaction(
+                        connection, from, to, currency, amount, TransactionType.PAY
+                );
                 connection.commit();
-                cache.put(new AccountKey(from, currency), newFrom);
-                cache.put(new AccountKey(to, currency), newTo);
-                return new TransferResult(newFrom, newTo, amount);
+                publishTransfer(from, to, currency, result);
+                return result;
             } catch (Exception exception) {
                 connection.rollback();
                 throw exception;
@@ -135,6 +127,41 @@ public final class EconomyService {
                 connection.setAutoCommit(oldAutoCommit);
             }
         });
+    }
+
+    /**
+     * Performs a balance transfer using a connection owned by another database transaction.
+     * This method deliberately does not commit and does not touch the in-memory cache. The caller
+     * must commit its transaction first and then call {@link #publishTransfer(UUID, UUID, CurrencyType, TransferResult)}.
+     */
+    public TransferResult transferWithinTransaction(
+            Connection connection,
+            UUID from,
+            UUID to,
+            CurrencyType currency,
+            BigDecimal requested,
+            TransactionType type
+    ) throws SQLException {
+        if (from.equals(to)) {
+            throw new IllegalArgumentException("Cannot transfer to yourself");
+        }
+        BigDecimal amount = requirePositive(currency, requested);
+        BigDecimal fromBalance = readOrCreate(connection, from, currency);
+        BigDecimal toBalance = readOrCreate(connection, to, currency);
+        if (fromBalance.compareTo(amount) < 0) {
+            throw new InsufficientFundsException(fromBalance, amount);
+        }
+        BigDecimal newFrom = fromBalance.subtract(amount);
+        BigDecimal newTo = toBalance.add(amount);
+        writeBalance(connection, from, currency, newFrom);
+        writeBalance(connection, to, currency, newTo);
+        record(connection, type, currency, from, to, amount);
+        return new TransferResult(newFrom, newTo, amount);
+    }
+
+    public void publishTransfer(UUID from, UUID to, CurrencyType currency, TransferResult result) {
+        cache.put(new AccountKey(from, currency), result.senderBalance());
+        cache.put(new AccountKey(to, currency), result.receiverBalance());
     }
 
     public CompletableFuture<List<LeaderboardEntry>> topBalances(CurrencyType currency, int requestedLimit) {
