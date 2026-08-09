@@ -8,11 +8,13 @@ public final class CrateModule implements SuperDuckModule {
     private final SuperDuckSystem plugin;
     private final KeyService keyService;
     private final CrateService crateService;
+    private final CrateLocationService locationService;
 
     public CrateModule(SuperDuckSystem plugin) {
         this.plugin = plugin;
         this.keyService = new KeyService(plugin);
         this.crateService = new CrateService(plugin, keyService);
+        this.locationService = new CrateLocationService(plugin, crateService, keyService);
     }
 
     @Override
@@ -35,12 +37,20 @@ public final class CrateModule implements SuperDuckModule {
         crateCommand.setExecutor(new CrateCommand(plugin, keyService, crateService));
 
         plugin.getServer().getPluginManager().registerEvents(keyService, plugin);
+        plugin.getServer().getPluginManager().registerEvents(locationService, plugin);
         keyService.start();
-        plugin.getLogger().info("Crates/key progression module enabled.");
+        locationService.start();
+        plugin.getLogger().info("Crates/key progression/physical crate module enabled.");
+    }
+
+    @Override
+    public void reload() {
+        locationService.reload();
     }
 
     @Override
     public void disable() {
+        locationService.stop();
         keyService.stop();
         plugin.getLogger().info("Crates/key progression module disabled.");
     }
