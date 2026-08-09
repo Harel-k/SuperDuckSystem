@@ -18,6 +18,10 @@ commands:
     usage: /balance [player]
     aliases: [bal, money]
     permission: superduck.balance
+  ducks:
+    description: View your Ducks currency
+    usage: /ducks [player]
+    permission: superduck.ducks
   pay:
     description: Pay another online player
     usage: /pay <player> <amount>
@@ -37,6 +41,12 @@ permissions:
     default: true
   superduck.balance.others:
     description: View other players' balances
+    default: op
+  superduck.ducks:
+    description: View your own Ducks
+    default: true
+  superduck.ducks.others:
+    description: View other players' Ducks
     default: op
   superduck.pay:
     description: Pay another player

@@ -30,6 +30,10 @@ public final class PayCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("This command can only be used by players.");
             return true;
         }
+        if (!plugin.configs().economy().getBoolean("payments.enabled", true)) {
+            send(player, "<red>Player payments are currently disabled.</red>");
+            return true;
+        }
         if (args.length != 2) {
             send(player, "<red>Usage: /pay <player> <amount></red>");
             return true;
@@ -39,29 +43,45 @@ public final class PayCommand implements CommandExecutor, TabCompleter {
             send(player, "<red>That player is not online.</red>");
             return true;
         }
+        if (target.getUniqueId().equals(player.getUniqueId())) {
+            send(player, "<red>You cannot pay yourself.</red>");
+            return true;
+        }
+
         BigDecimal amount;
         try {
-            amount = new BigDecimal(args[1].replace(",", ""));
+            amount = plugin.economy().formatter().normalize(CurrencyType.MONEY, new BigDecimal(args[1].replace(",", "")));
         } catch (NumberFormatException exception) {
             send(player, "<red>That is not a valid amount.</red>");
             return true;
         }
+        BigDecimal minimum = new BigDecimal(plugin.configs().economy().getString("payments.minimum", "1"));
+        BigDecimal maximum = new BigDecimal(plugin.configs().economy().getString("payments.maximum", "1000000000000"));
+        if (amount.compareTo(minimum) < 0 || amount.compareTo(maximum) > 0) {
+            send(player, "<red>Payment must be between " + plugin.economy().formatter().format(CurrencyType.MONEY, minimum)
+                    + " and " + plugin.economy().formatter().format(CurrencyType.MONEY, maximum) + ".</red>");
+            return true;
+        }
 
-        plugin.economy().transfer(player.getUniqueId(), target.getUniqueId(), CurrencyType.MONEY, amount)
-                .whenComplete((result, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (error != null) {
-                        Throwable cause = unwrap(error);
-                        if (cause instanceof EconomyService.InsufficientFundsException) {
-                            send(player, "<red>You do not have enough money.</red>");
-                        } else {
-                            send(player, "<red>Payment failed: " + safe(cause.getMessage()) + "</red>");
+        try {
+            plugin.economy().transfer(player.getUniqueId(), target.getUniqueId(), CurrencyType.MONEY, amount)
+                    .whenComplete((result, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (error != null) {
+                            Throwable cause = unwrap(error);
+                            if (cause instanceof EconomyService.InsufficientFundsException) {
+                                send(player, "<red>You do not have enough money.</red>");
+                            } else {
+                                send(player, "<red>Payment failed: " + safe(cause.getMessage()) + "</red>");
+                            }
+                            return;
                         }
-                        return;
-                    }
-                    String formatted = plugin.economy().formatter().format(CurrencyType.MONEY, result.amount());
-                    send(player, "<green>You paid <white>" + target.getName() + "</white> " + formatted + ".</green>");
-                    send(target, "<green>You received " + formatted + " from <white>" + player.getName() + "</white>.</green>");
-                }));
+                        String formatted = plugin.economy().formatter().format(CurrencyType.MONEY, result.amount());
+                        send(player, "<green>You paid <white>" + target.getName() + "</white> " + formatted + ".</green>");
+                        send(target, "<green>You received " + formatted + " from <white>" + player.getName() + "</white>.</green>");
+                    }));
+        } catch (IllegalArgumentException exception) {
+            send(player, "<red>" + safe(exception.getMessage()) + ".</red>");
+        }
         return true;
     }
 
