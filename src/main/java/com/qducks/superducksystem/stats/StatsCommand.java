@@ -82,6 +82,7 @@ public final class StatsCommand implements CommandExecutor {
                 .replace("%money_received%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.moneyReceived()))
                 .replace("%sell_earned%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.sellEarned()))
                 .replace("%auction_earned%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.auctionEarned()))
+                .replace("%order_earned%", plugin.economy().formatter().format(CurrencyType.MONEY, profile.orderEarned()))
                 .replace("%ducks_earned%", plugin.economy().formatter().format(CurrencyType.DUCKS, profile.ducksEarned()))
                 .replace("%ducks_spent%", plugin.economy().formatter().format(CurrencyType.DUCKS, profile.ducksSpent()));
     }
