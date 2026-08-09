@@ -8,9 +8,11 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 public final class RewardsCommand implements CommandExecutor {
+    private final SuperDuckSystem plugin;
     private final RewardsMenu menu;
 
     public RewardsCommand(SuperDuckSystem plugin, RewardService rewards) {
+        this.plugin = plugin;
         this.menu = new RewardsMenu(plugin, rewards);
     }
 
@@ -18,6 +20,10 @@ public final class RewardsCommand implements CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>This command can only be used by players.</red>");
+            return true;
+        }
+        if (plugin.state().maintenance("rewards")) {
+            player.sendRichMessage("<red>Rewards are temporarily in maintenance mode.</red>");
             return true;
         }
         if (args.length != 0) {
