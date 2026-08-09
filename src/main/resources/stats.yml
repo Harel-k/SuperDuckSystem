@@ -1,0 +1,19 @@
+# SuperDuckSystem stats and leaderboard display
+stats:
+  title: "<aqua><bold>%player%'s Stats</bold></aqua>"
+  lines:
+    - "<gray>Kills:</gray> <white>%kills%</white>"
+    - "<gray>Deaths:</gray> <white>%deaths%</white>"
+    - "<gray>K/D:</gray> <white>%kd%</white>"
+    - "<gray>Playtime:</gray> <white>%playtime%</white>"
+    - "<gray>Crates opened:</gray> <white>%crates%</white>"
+    - "<gray>Keys used:</gray> <white>%keys_used%</white>"
+    - "<gray>Auctions sold:</gray> <white>%auctions_sold%</white>"
+    - "<gray>Orders created:</gray> <white>%orders_created%</white>"
+    - "<gray>Orders filled:</gray> <white>%orders_filled%</white>"
+
+leaderboard:
+  default-size: 10
+  title: "<gold><bold>%type% Leaderboard</bold></gold>"
+  line: "<yellow>#%rank%</yellow> <white>%player%</white> <gray>-</gray> <green>%value%</green>"
+  empty: "<gray>No leaderboard data yet.</gray>"
