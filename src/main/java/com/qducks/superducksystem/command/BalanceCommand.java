@@ -2,7 +2,7 @@ package com.qducks.superducksystem.command;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import com.qducks.superducksystem.message.MessageService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -13,13 +13,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 
 public final class BalanceCommand implements CommandExecutor, TabCompleter {
     private final SuperDuckSystem plugin;
-    private final MiniMessage mini = MiniMessage.miniMessage();
+    private final MessageService messages;
 
     public BalanceCommand(SuperDuckSystem plugin) {
         this.plugin = plugin;
+        this.messages = new MessageService(plugin);
     }
 
     @Override
@@ -27,18 +29,18 @@ public final class BalanceCommand implements CommandExecutor, TabCompleter {
         Player target;
         if (args.length == 0) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage("Usage: /balance <player>");
+                messages.send(sender, "economy.balance-usage", "<red>Usage: /balance <player></red>");
                 return true;
             }
             target = player;
         } else {
             if (!sender.hasPermission("superduck.balance.others")) {
-                send(sender, "<red>You do not have permission to view other balances.</red>");
+                messages.send(sender, "errors.no-permission", "<red>You do not have permission to do that.</red>");
                 return true;
             }
             target = Bukkit.getPlayerExact(args[0]);
             if (target == null) {
-                send(sender, "<red>That player is not online.</red>");
+                messages.send(sender, "errors.player-not-online", "<red>That player is not online.</red>");
                 return true;
             }
         }
@@ -46,21 +48,18 @@ public final class BalanceCommand implements CommandExecutor, TabCompleter {
         plugin.economy().balance(target.getUniqueId(), CurrencyType.MONEY).whenComplete((balance, error) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (error != null) {
-                        send(sender, "<red>Could not load the balance right now.</red>");
+                        messages.send(sender, "errors.database", "<red>Could not load that right now.</red>");
                         return;
                     }
                     String formatted = plugin.economy().formatter().format(CurrencyType.MONEY, balance);
                     if (target.equals(sender)) {
-                        send(sender, "<gray>Balance:</gray> <green>" + formatted + "</green>");
+                        messages.send(sender, "economy.balance", "<gray>Balance:</gray> <green>%balance%</green>", Map.of("balance", formatted));
                     } else {
-                        send(sender, "<white>" + target.getName() + "</white><gray>'s balance:</gray> <green>" + formatted + "</green>");
+                        messages.send(sender, "economy.balance-other", "<white>%player%</white><gray>'s balance:</gray> <green>%balance%</green>",
+                                Map.of("player", target.getName(), "balance", formatted));
                     }
                 }));
         return true;
-    }
-
-    private void send(CommandSender sender, String text) {
-        sender.sendMessage(mini.deserialize(text));
     }
 
     @Override

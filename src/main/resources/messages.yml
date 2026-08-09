@@ -1,3 +1,6 @@
+# SuperDuckSystem messages
+# MiniMessage formatting is supported. Placeholders wrapped in %...% are filled by the plugin.
+
 help:
   header: "<aqua><bold>SuperDuckSystem</bold></aqua> <gray>v%version%</gray>"
   line: "<gray>Use <white>/%label% status</white> to view system status.</gray>"
@@ -5,14 +8,34 @@ help:
 errors:
   no-permission: "<red>You do not have permission to do that.</red>"
   unknown-subcommand: "<red>Unknown subcommand.</red>"
+  player-not-online: "<red>That player is not online.</red>"
+  player-never-joined: "<red>That player has never joined the server.</red>"
+  invalid-amount: "<red>That is not a valid amount.</red>"
+  amount-required: "<red>You must provide an amount.</red>"
+  database: "<red>Could not load that right now.</red>"
 
 admin:
   reloaded: "<green>SuperDuckSystem configuration reloaded.</green>"
   status-header: "<aqua><bold>SuperDuckSystem</bold></aqua> <gray>Status</gray>"
 
 economy:
+  balance-usage: "<red>Usage: /balance <player></red>"
   balance: "<gray>Balance:</gray> <green>%balance%</green>"
   balance-other: "<white>%player%</white><gray>'s balance:</gray> <green>%balance%</green>"
+  pay-usage: "<red>Usage: /pay <player> <amount></red>"
+  pay-disabled: "<red>Player payments are currently disabled.</red>"
+  pay-self: "<red>You cannot pay yourself.</red>"
+  pay-range: "<red>Payment must be between %minimum% and %maximum%.</red>"
   paid: "<green>You paid <white>%player%</white> %amount%.</green>"
   received: "<green>You received %amount% from <white>%player%</white>.</green>"
   insufficient: "<red>You do not have enough money.</red>"
+  failed: "<red>Payment failed.</red>"
+  admin-usage: "<red>Usage: /eco <give|take|set|reset> <player> [amount] [money|ducks]</red>"
+  admin-unknown: "<red>Unknown action. Use give, take, set or reset.</red>"
+  admin-failed: "<red>Economy action failed.</red>"
+  admin-success: "<green>%action% completed for <white>%player%</white>. New balance: %balance%</green>"
+
+ducks:
+  usage: "<red>Usage: /ducks <player></red>"
+  balance: "<gray>Ducks:</gray> <yellow>%ducks%</yellow>"
+  balance-other: "<white>%player%</white><gray>'s Ducks:</gray> <yellow>%ducks%</yellow>"

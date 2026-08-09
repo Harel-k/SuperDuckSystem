@@ -3,7 +3,7 @@ package com.qducks.superducksystem.command;
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
 import com.qducks.superducksystem.economy.EconomyService;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import com.qducks.superducksystem.message.MessageService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -15,13 +15,15 @@ import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 public final class PayCommand implements CommandExecutor, TabCompleter {
     private final SuperDuckSystem plugin;
-    private final MiniMessage mini = MiniMessage.miniMessage();
+    private final MessageService messages;
 
     public PayCommand(SuperDuckSystem plugin) {
         this.plugin = plugin;
+        this.messages = new MessageService(plugin);
     }
 
     @Override
@@ -31,20 +33,20 @@ public final class PayCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (!plugin.configs().economy().getBoolean("payments.enabled", true)) {
-            send(player, "<red>Player payments are currently disabled.</red>");
+            messages.send(player, "economy.pay-disabled", "<red>Player payments are currently disabled.</red>");
             return true;
         }
         if (args.length != 2) {
-            send(player, "<red>Usage: /pay <player> <amount></red>");
+            messages.send(player, "economy.pay-usage", "<red>Usage: /pay <player> <amount></red>");
             return true;
         }
         Player target = Bukkit.getPlayerExact(args[0]);
         if (target == null) {
-            send(player, "<red>That player is not online.</red>");
+            messages.send(player, "errors.player-not-online", "<red>That player is not online.</red>");
             return true;
         }
         if (target.getUniqueId().equals(player.getUniqueId())) {
-            send(player, "<red>You cannot pay yourself.</red>");
+            messages.send(player, "economy.pay-self", "<red>You cannot pay yourself.</red>");
             return true;
         }
 
@@ -52,14 +54,16 @@ public final class PayCommand implements CommandExecutor, TabCompleter {
         try {
             amount = plugin.economy().formatter().normalize(CurrencyType.MONEY, new BigDecimal(args[1].replace(",", "")));
         } catch (NumberFormatException exception) {
-            send(player, "<red>That is not a valid amount.</red>");
+            messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
             return true;
         }
         BigDecimal minimum = new BigDecimal(plugin.configs().economy().getString("payments.minimum", "1"));
         BigDecimal maximum = new BigDecimal(plugin.configs().economy().getString("payments.maximum", "1000000000000"));
         if (amount.compareTo(minimum) < 0 || amount.compareTo(maximum) > 0) {
-            send(player, "<red>Payment must be between " + plugin.economy().formatter().format(CurrencyType.MONEY, minimum)
-                    + " and " + plugin.economy().formatter().format(CurrencyType.MONEY, maximum) + ".</red>");
+            messages.send(player, "economy.pay-range", "<red>Payment must be between %minimum% and %maximum%.</red>", Map.of(
+                    "minimum", plugin.economy().formatter().format(CurrencyType.MONEY, minimum),
+                    "maximum", plugin.economy().formatter().format(CurrencyType.MONEY, maximum)
+            ));
             return true;
         }
 
@@ -69,32 +73,26 @@ public final class PayCommand implements CommandExecutor, TabCompleter {
                         if (error != null) {
                             Throwable cause = unwrap(error);
                             if (cause instanceof EconomyService.InsufficientFundsException) {
-                                send(player, "<red>You do not have enough money.</red>");
+                                messages.send(player, "economy.insufficient", "<red>You do not have enough money.</red>");
                             } else {
-                                send(player, "<red>Payment failed: " + safe(cause.getMessage()) + "</red>");
+                                messages.send(player, "economy.failed", "<red>Payment failed.</red>");
                             }
                             return;
                         }
                         String formatted = plugin.economy().formatter().format(CurrencyType.MONEY, result.amount());
-                        send(player, "<green>You paid <white>" + target.getName() + "</white> " + formatted + ".</green>");
-                        send(target, "<green>You received " + formatted + " from <white>" + player.getName() + "</white>.</green>");
+                        messages.send(player, "economy.paid", "<green>You paid <white>%player%</white> %amount%.</green>",
+                                Map.of("player", target.getName(), "amount", formatted));
+                        messages.send(target, "economy.received", "<green>You received %amount% from <white>%player%</white>.</green>",
+                                Map.of("player", player.getName(), "amount", formatted));
                     }));
         } catch (IllegalArgumentException exception) {
-            send(player, "<red>" + safe(exception.getMessage()) + ".</red>");
+            messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
         }
         return true;
     }
 
     private Throwable unwrap(Throwable throwable) {
         return throwable.getCause() == null ? throwable : throwable.getCause();
-    }
-
-    private String safe(String value) {
-        return value == null ? "unknown error" : value.replace("<", "");
-    }
-
-    private void send(CommandSender sender, String text) {
-        sender.sendMessage(mini.deserialize(text));
     }
 
     @Override

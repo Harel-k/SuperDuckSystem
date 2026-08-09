@@ -3,7 +3,7 @@ package com.qducks.superducksystem.command;
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
 import com.qducks.superducksystem.economy.TransactionType;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import com.qducks.superducksystem.message.MessageService;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -17,31 +17,33 @@ import org.jetbrains.annotations.Nullable;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 public final class EcoCommand implements CommandExecutor, TabCompleter {
     private final SuperDuckSystem plugin;
-    private final MiniMessage mini = MiniMessage.miniMessage();
+    private final MessageService messages;
 
     public EcoCommand(SuperDuckSystem plugin) {
         this.plugin = plugin;
+        this.messages = new MessageService(plugin);
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!sender.hasPermission("superduck.admin.economy")) {
-            send(sender, "<red>You do not have permission to do that.</red>");
+            messages.send(sender, "errors.no-permission", "<red>You do not have permission to do that.</red>");
             return true;
         }
         if (args.length < 2) {
-            send(sender, "<red>Usage: /eco <give|take|set|reset> <player> [amount] [money|ducks]</red>");
+            messages.send(sender, "economy.admin-usage", "<red>Usage: /eco <give|take|set|reset> <player> [amount] [money|ducks]</red>");
             return true;
         }
 
         String action = args[0].toLowerCase(Locale.ROOT);
         OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
         if (!target.isOnline() && !target.hasPlayedBefore()) {
-            send(sender, "<red>That player has never joined the server.</red>");
+            messages.send(sender, "errors.player-never-joined", "<red>That player has never joined the server.</red>");
             return true;
         }
         CurrencyType currency = args.length >= 4 && args[3].equalsIgnoreCase("ducks") ? CurrencyType.DUCKS : CurrencyType.MONEY;
@@ -53,7 +55,7 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length < 3) {
-            send(sender, "<red>You must provide an amount.</red>");
+            messages.send(sender, "errors.amount-required", "<red>You must provide an amount.</red>");
             return true;
         }
 
@@ -61,42 +63,41 @@ public final class EcoCommand implements CommandExecutor, TabCompleter {
         try {
             amount = new BigDecimal(args[2].replace(",", ""));
         } catch (NumberFormatException exception) {
-            send(sender, "<red>That is not a valid amount.</red>");
+            messages.send(sender, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
             return true;
         }
 
-        var future = switch (action) {
-            case "give" -> plugin.economy().add(target.getUniqueId(), currency, amount, TransactionType.ADMIN_GIVE, actor);
-            case "take" -> plugin.economy().take(target.getUniqueId(), currency, amount, TransactionType.ADMIN_TAKE, actor);
-            case "set" -> plugin.economy().set(target.getUniqueId(), currency, amount, TransactionType.ADMIN_SET, actor);
-            default -> null;
-        };
-        if (future == null) {
-            send(sender, "<red>Unknown action. Use give, take, set or reset.</red>");
-            return true;
+        try {
+            var future = switch (action) {
+                case "give" -> plugin.economy().add(target.getUniqueId(), currency, amount, TransactionType.ADMIN_GIVE, actor);
+                case "take" -> plugin.economy().take(target.getUniqueId(), currency, amount, TransactionType.ADMIN_TAKE, actor);
+                case "set" -> plugin.economy().set(target.getUniqueId(), currency, amount, TransactionType.ADMIN_SET, actor);
+                default -> null;
+            };
+            if (future == null) {
+                messages.send(sender, "economy.admin-unknown", "<red>Unknown action. Use give, take, set or reset.</red>");
+                return true;
+            }
+            future.whenComplete((balance, error) -> finish(sender, target, currency, balance, error, action));
+        } catch (IllegalArgumentException exception) {
+            messages.send(sender, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
         }
-        future.whenComplete((balance, error) -> finish(sender, target, currency, balance, error, action));
         return true;
     }
 
     private void finish(CommandSender sender, OfflinePlayer target, CurrencyType currency, BigDecimal balance, Throwable error, String action) {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (error != null) {
-                Throwable cause = error.getCause() == null ? error : error.getCause();
-                send(sender, "<red>Economy action failed: " + safe(cause.getMessage()) + "</red>");
+                messages.send(sender, "economy.admin-failed", "<red>Economy action failed.</red>");
                 return;
             }
             String formatted = plugin.economy().formatter().format(currency, balance);
-            send(sender, "<green>" + action + " completed for <white>" + (target.getName() == null ? target.getUniqueId() : target.getName()) + "</white>. New balance: " + formatted + "</green>");
+            messages.send(sender, "economy.admin-success", "<green>%action% completed for <white>%player%</white>. New balance: %balance%</green>", Map.of(
+                    "action", action,
+                    "player", target.getName() == null ? target.getUniqueId().toString() : target.getName(),
+                    "balance", formatted
+            ));
         });
-    }
-
-    private String safe(String value) {
-        return value == null ? "unknown error" : value.replace("<", "");
-    }
-
-    private void send(CommandSender sender, String text) {
-        sender.sendMessage(mini.deserialize(text));
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.qducks.superducksystem.command;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import com.qducks.superducksystem.message.MessageService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -13,13 +13,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 
 public final class DucksCommand implements CommandExecutor, TabCompleter {
     private final SuperDuckSystem plugin;
-    private final MiniMessage mini = MiniMessage.miniMessage();
+    private final MessageService messages;
 
     public DucksCommand(SuperDuckSystem plugin) {
         this.plugin = plugin;
+        this.messages = new MessageService(plugin);
     }
 
     @Override
@@ -27,18 +29,18 @@ public final class DucksCommand implements CommandExecutor, TabCompleter {
         Player target;
         if (args.length == 0) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage("Usage: /ducks <player>");
+                messages.send(sender, "ducks.usage", "<red>Usage: /ducks <player></red>");
                 return true;
             }
             target = player;
         } else {
             if (!sender.hasPermission("superduck.ducks.others")) {
-                sender.sendMessage(mini.deserialize("<red>You do not have permission to view other players' Ducks.</red>"));
+                messages.send(sender, "errors.no-permission", "<red>You do not have permission to do that.</red>");
                 return true;
             }
             target = Bukkit.getPlayerExact(args[0]);
             if (target == null) {
-                sender.sendMessage(mini.deserialize("<red>That player is not online.</red>"));
+                messages.send(sender, "errors.player-not-online", "<red>That player is not online.</red>");
                 return true;
             }
         }
@@ -46,14 +48,15 @@ public final class DucksCommand implements CommandExecutor, TabCompleter {
         plugin.economy().balance(target.getUniqueId(), CurrencyType.DUCKS).whenComplete((balance, error) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (error != null) {
-                        sender.sendMessage(mini.deserialize("<red>Could not load Ducks right now.</red>"));
+                        messages.send(sender, "errors.database", "<red>Could not load that right now.</red>");
                         return;
                     }
                     String formatted = plugin.economy().formatter().format(CurrencyType.DUCKS, balance);
                     if (target.equals(sender)) {
-                        sender.sendMessage(mini.deserialize("<gray>Ducks:</gray> <yellow>" + formatted + "</yellow>"));
+                        messages.send(sender, "ducks.balance", "<gray>Ducks:</gray> <yellow>%ducks%</yellow>", Map.of("ducks", formatted));
                     } else {
-                        sender.sendMessage(mini.deserialize("<white>" + target.getName() + "</white><gray>'s Ducks:</gray> <yellow>" + formatted + "</yellow>"));
+                        messages.send(sender, "ducks.balance-other", "<white>%player%</white><gray>'s Ducks:</gray> <yellow>%ducks%</yellow>",
+                                Map.of("player", target.getName(), "ducks", formatted));
                     }
                 }));
         return true;
