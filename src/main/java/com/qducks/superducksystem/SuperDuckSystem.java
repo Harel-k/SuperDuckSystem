@@ -4,6 +4,7 @@ import com.qducks.superducksystem.command.SuperDuckCommand;
 import com.qducks.superducksystem.config.ConfigManager;
 import com.qducks.superducksystem.database.DatabaseManager;
 import com.qducks.superducksystem.economy.EconomyService;
+import com.qducks.superducksystem.gui.GuiManager;
 import com.qducks.superducksystem.integration.IntegrationManager;
 import com.qducks.superducksystem.item.CustomItemService;
 import com.qducks.superducksystem.module.ModuleManager;
@@ -18,6 +19,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private IntegrationManager integrationManager;
     private ModuleManager moduleManager;
     private CustomItemService customItemService;
+    private GuiManager guiManager;
 
     @Override
     public void onEnable() {
@@ -29,6 +31,7 @@ public final class SuperDuckSystem extends JavaPlugin {
 
         this.economyService = new EconomyService(this);
         this.customItemService = new CustomItemService(this);
+        this.guiManager = new GuiManager(this);
 
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
@@ -37,6 +40,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.moduleManager.loadConfiguredModules();
 
         getServer().getPluginManager().registerEvents(new PlayerProfileListener(this), this);
+        getServer().getPluginManager().registerEvents(guiManager, this);
 
         PluginCommand command = getCommand("superduck");
         if (command == null) {
@@ -81,5 +85,9 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public CustomItemService customItems() {
         return customItemService;
+    }
+
+    public GuiManager guis() {
+        return guiManager;
     }
 }
