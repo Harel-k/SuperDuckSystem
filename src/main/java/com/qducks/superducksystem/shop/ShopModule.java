@@ -20,12 +20,17 @@ public final class ShopModule implements SuperDuckModule {
 
     @Override
     public void enable() {
+        PluginCommand shopCommand = plugin.getCommand("shop");
         PluginCommand sell = plugin.getCommand("sell");
+        if (shopCommand == null) {
+            throw new IllegalStateException("Command /shop is missing from plugin.yml");
+        }
         if (sell == null) {
             throw new IllegalStateException("Command /sell is missing from plugin.yml");
         }
+        shopCommand.setExecutor(new ShopCommand(plugin));
         sell.setExecutor(new SellCommand(plugin, shop));
-        plugin.getLogger().info("Shop module enabled with /sell.");
+        plugin.getLogger().info("Shop module enabled with /shop and /sell.");
     }
 
     @Override
