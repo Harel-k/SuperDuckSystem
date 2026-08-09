@@ -103,8 +103,8 @@ public final class DatabaseManager {
     private void createSchema(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
-            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 3 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
-            statement.executeUpdate("UPDATE schema_version SET version=3 WHERE version < 3");
+            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 4 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
+            statement.executeUpdate("UPDATE schema_version SET version=4 WHERE version < 4");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS players ("
                     + "uuid TEXT PRIMARY KEY NOT NULL,"
                     + "username TEXT NOT NULL,"
@@ -134,6 +134,23 @@ public final class DatabaseManager {
                     + "value INTEGER NOT NULL,"
                     + "PRIMARY KEY(uuid, setting)"
                     + ")");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS auctions ("
+                    + "id TEXT PRIMARY KEY NOT NULL,"
+                    + "seller_uuid TEXT NOT NULL,"
+                    + "seller_name TEXT NOT NULL,"
+                    + "item_data BLOB NOT NULL,"
+                    + "item_material TEXT NOT NULL,"
+                    + "search_text TEXT NOT NULL,"
+                    + "price TEXT NOT NULL,"
+                    + "created_at INTEGER NOT NULL,"
+                    + "expires_at INTEGER NOT NULL,"
+                    + "status TEXT NOT NULL,"
+                    + "buyer_uuid TEXT,"
+                    + "sold_at INTEGER"
+                    + ")");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_status_created ON auctions(status, created_at)");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_seller_status ON auctions(seller_uuid, status)");
+            statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_expires ON auctions(status, expires_at)");
         }
     }
 
