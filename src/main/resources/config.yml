@@ -24,6 +24,40 @@ integrations:
   luckperms: true
   vaultunlocked: true
 
+# Rank perk values are fully configurable. The LuckPerms primary group is used when LuckPerms is available.
+# These are converted into the same numeric permissions used by the AH and Orders systems.
+rank-perks:
+  default:
+    auction-slots: 3
+    order-slots: 3
+  duckplus:
+    auction-slots: 9
+    order-slots: 9
+  duckplusplus:
+    auction-slots: 20
+    order-slots: 20
+  duckplusplusplus:
+    auction-slots: 45
+    order-slots: 45
+  staff:
+    auction-slots: 45
+    order-slots: 45
+  helper:
+    auction-slots: 45
+    order-slots: 45
+  moderator:
+    auction-slots: 50
+    order-slots: 50
+  admin:
+    auction-slots: 60
+    order-slots: 60
+  developer:
+    auction-slots: 75
+    order-slots: 75
+  owner:
+    auction-slots: 100
+    order-slots: 100
+
 custom-tools:
   duck-pickaxe:
     area-width: 3
