@@ -6,4 +6,6 @@ public interface BedrockService {
     boolean available();
 
     boolean isBedrock(Player player);
+
+    boolean openSettings(Player player);
 }
