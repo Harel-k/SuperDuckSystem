@@ -52,6 +52,11 @@ commands:
     usage: /ah [search] or /ah sell <price>
     aliases: [ah]
     permission: superduck.auction
+  order:
+    description: Open and use Buy Orders
+    usage: /order [search] or /order create
+    aliases: [orders]
+    permission: superduck.order
 
 permissions:
   superduck.command:
@@ -89,6 +94,12 @@ permissions:
     default: true
   superduck.auction.slots.3:
     description: Allow three active auction listings
+    default: true
+  superduck.order:
+    description: Use Buy Orders
+    default: true
+  superduck.order.slots.3:
+    description: Allow three active buy orders
     default: true
   superduck.admin.economy:
     description: Manage player money and Ducks
