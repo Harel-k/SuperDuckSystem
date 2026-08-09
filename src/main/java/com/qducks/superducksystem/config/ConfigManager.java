@@ -18,6 +18,7 @@ public final class ConfigManager {
     private FileConfiguration crates;
     private FileConfiguration crateLocations;
     private FileConfiguration customItems;
+    private FileConfiguration stats;
 
     public ConfigManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -35,6 +36,7 @@ public final class ConfigManager {
         saveResourceIfMissing("crates.yml");
         saveResourceIfMissing("crate-locations.yml");
         saveResourceIfMissing("custom-items.yml");
+        saveResourceIfMissing("stats.yml");
         reloadSecondaryFiles();
     }
 
@@ -87,6 +89,10 @@ public final class ConfigManager {
         return customItems;
     }
 
+    public FileConfiguration stats() {
+        return stats;
+    }
+
     public String serverName() {
         return main().getString("server.name", "Server");
     }
@@ -102,6 +108,7 @@ public final class ConfigManager {
         crates = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "crates.yml"));
         crateLocations = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "crate-locations.yml"));
         customItems = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "custom-items.yml"));
+        stats = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "stats.yml"));
     }
 
     private void saveResourceIfMissing(String name) {
