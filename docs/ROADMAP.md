@@ -1,67 +1,103 @@
 # SuperDuckSystem Roadmap
 
-## v0.1 Foundation
+## Core feature status
+
+### ✅ Foundation
 - Paper 1.21.11 / Java 21
-- Gradle Kotlin DSL
-- Modular config and messages
-- Async SQLite foundation and player profiles
-- Optional PlaceholderAPI / Floodgate integration
-- Custom item identity through PersistentDataContainer
-- `/superduck` (`/sds`) help/status/reload
-- GitHub Actions build
+- Gradle Kotlin DSL + GitHub Actions
+- Modular YAML configuration and messages
+- Async SQLite + UUID player profiles
+- Persistent custom item identity through PDC
+- PlaceholderAPI, Floodgate, LuckPerms and VaultUnlocked integrations
+- `/superduck` (`/sds`) status/reload/admin tooling
 
-## v0.2 Economy
-- Fully configurable primary currency
+### ✅ Economy / Ducks
+- Configurable primary money currency
 - Ducks secondary currency
-- `/bal`, `/pay`, `/eco`
-- Transaction ledger and formatting
-- VaultUnlocked provider
-- PlaceholderAPI values for TAB
+- `/bal`, `/pay`, `/eco`, `/baltop`
+- BigDecimal transaction ledger
+- VaultUnlocked economy provider
+- PlaceholderAPI values
+- Emergency economy read-only / maintenance lock
 
-## v0.3 Shop / Sell
-- `/shop` configurable GUI
-- `/sell` configurable sell GUI
-- Configurable categories, prices and restrictions
+### ✅ Shop / Sell
+- `/shop` configurable category GUI
+- `/sell` GUI workflow
+- Configurable prices and restrictions
 
-## v0.4 Auction House
-- `/ah`
-- `/ah <search>`
-- `/ah sell <price>` with optional confirmation
-- Search input, sorting, refresh and My Items
-- Player setting for instant purchases
-- Item escrow and anti-dupe transaction safety
+### ✅ Auction House
+- `/ah`, `/ah <search>`, optional `/ah sell <price>`
+- Search, sorting, refresh and My Auctions
+- Click empty My Auctions slot -> inventory picker -> price -> confirmation
+- Escrow, claims and transactional purchase protection
+- LuckPerms rank slot limits
 
-## v0.5 Orders
-- `/order`
-- `/order <search>`
-- Buy-order escrow with amount and price per item
-- Partial fills, search, sorting, refresh and My Orders
+### ✅ Buy Orders
+- `/order`, `/order <search>`, `/order create`
+- Searchable catalog; no held-item requirement
+- Amount + price-per-item + final-cost confirmation
+- Full buyer escrow, partial fills and item claims
+- Click empty My Orders slot to create
+- LuckPerms rank slot limits
 
-## v0.6 Keys / Crates
-- Configurable playtime key milestones
-- Default concept: Starter at 5 online minutes, Common at 15 online minutes
-- Offline time does not count
-- After milestone path completion, configurable recurring Common key (default concept: every 30 online minutes)
-- Configurable crate timers and loot pools
-- GUI / scrolling opening styles; no physical model animation requirement
+### ✅ Keys / Crates
+- Digital keys and configurable online-playtime milestones
+- Offline time does not count; leaving resets current milestone progress
+- Configurable repeating key after milestones
+- QUICK and SCROLL crate opening styles
+- ITEM, CUSTOM_ITEM, MONEY, DUCKS and KEY rewards
+- Configurable physical spawn crate block coordinates
+- Right-click crate preview with reward chances and key count
+- Floating TextDisplay crate nametags
+- Crate/key player stats
 
-## v0.7 Duck Tools
-- Duck Pickaxe: configurable 3x3 mining area
-- Duck Shovel: configurable 3x3 digging area
-- Duck Axe: configurable whole-tree vein felling with safety limits
+### ✅ Duck Tools / Custom Items
+- Configurable Duck Pickaxe 3x3
+- Configurable Duck Shovel 3x3
+- Configurable Duck Axe connected-tree vein felling
+- Normal block-break event path for protection/plugin compatibility
+- Configurable custom item material/name/lore/enchantments
+- `/sds giveitem`
+- Duck tools supported directly in crates/rewards
 
-## v0.8 Settings / Stats
+### ✅ Settings / Bedrock UX
 - Donut-style settings GUI
-- Confirmations and instant-action toggles
-- Notification and sound preferences
-- Stats UI
+- Confirmation and instant-action toggles
+- Floodgate native settings form
+- Floodgate native text forms for AH/Order searches, amounts and prices
+- Java virtual-sign input fallback
 
-## v0.9 Rewards / Leaderboards
-- Configurable rewards and leaderboards
+### ✅ Stats / Leaderboards
+- `/stats [player]`
+- Kills, deaths, K/D, playtime, market and economy activity, crates/keys
+- `/leaderboard` for money, Ducks, kills, playtime and crates
+- Stats PlaceholderAPI values
 
-## v1.0 Production hardening
-- Java and Bedrock testing
-- Database backup / recovery
-- Crash/restart transaction recovery
-- Dupe/exploit testing
-- Performance profiling
+### ✅ Rewards
+- `/daily` with configurable cooldown/streak rewards
+- `/rewards` playtime milestone GUI
+- MONEY, DUCKS, ITEM, KEY and CUSTOM_ITEM reward types
+- Reward configuration validation before claims
+
+### ✅ Operations / Recovery
+- `/sds status`
+- `/sds readonly`
+- `/sds maintenance <module>`
+- `/sds backup`
+- Automatic rotating SQLite backups
+- WAL + transaction/escrow design for money-sensitive systems
+
+## v1.0 release gate
+The gameplay feature set is complete. The remaining release gate is **live server validation**, not another planned gameplay module:
+
+- Java runtime test on the real Paper 1.21.11 server
+- Bedrock/Geyser runtime test
+- Two-player AH concurrency test
+- Two-player partial-order fill test
+- Protected-area Duck Tool test
+- Crate disconnect/restart behavior test
+- Full server restart + database recovery check
+- Spark/performance check under real players
+- Configure the real spawn crate coordinates
+
+Until those tests pass, builds are tagged as a `1.0.0-RC` rather than stable `1.0.0`.
