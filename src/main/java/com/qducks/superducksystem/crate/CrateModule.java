@@ -26,7 +26,7 @@ public final class CrateModule implements SuperDuckModule {
         if (keyCommand == null) {
             throw new IllegalStateException("Command /key is missing from plugin.yml");
         }
-        keyCommand.setExecutor(new KeyCommand(plugin, keyService));
+        keyCommand.setExecutor(new KeyCommand(plugin, keyService, crateService));
 
         PluginCommand crateCommand = plugin.getCommand("crates");
         if (crateCommand == null) {
