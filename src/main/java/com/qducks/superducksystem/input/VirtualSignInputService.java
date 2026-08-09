@@ -25,10 +25,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-/**
- * Opens Paper's virtual sign editor without changing a real block in the world. This is reusable
- * for Auction House search, Orders search and other short text prompts.
- */
+/** Java players use a virtual sign; Floodgate players automatically receive a native Bedrock text form. */
 @SuppressWarnings("UnstableApiUsage")
 public final class VirtualSignInputService implements Listener {
     private static final PlainTextComponentSerializer PLAIN = PlainTextComponentSerializer.plainText();
@@ -42,18 +39,25 @@ public final class VirtualSignInputService implements Listener {
 
     public void request(Player player, String initialText, Consumer<String> callback) {
         clear(player);
+        String initial = initialText == null ? "" : initialText.trim();
+        if (initial.length() > 64) initial = initial.substring(0, 64);
+
+        if (plugin.integrations() != null && plugin.integrations().bedrock().isBedrock(player)) {
+            boolean opened = plugin.integrations().bedrock().requestText(
+                    player,
+                    "QDucks Input",
+                    "Type your search / amount / price",
+                    "Enter text...",
+                    initial,
+                    input -> callback.accept(limit(input, 128))
+            );
+            if (opened) return;
+        }
 
         Location location = chooseLocation(player);
         BlockData signData = Material.OAK_SIGN.createBlockData();
         BlockState state = signData.createBlockState();
-        if (!(state instanceof Sign sign)) {
-            throw new IllegalStateException("OAK_SIGN did not create a Sign block state");
-        }
-
-        String initial = initialText == null ? "" : initialText.trim();
-        if (initial.length() > 64) {
-            initial = initial.substring(0, 64);
-        }
+        if (!(state instanceof Sign sign)) throw new IllegalStateException("OAK_SIGN did not create a Sign block state");
         sign.getSide(Side.FRONT).line(0, Component.text(initial));
 
         player.closeInventory();
@@ -78,9 +82,7 @@ public final class VirtualSignInputService implements Listener {
     public void onVirtualSignChange(UncheckedSignChangeEvent event) {
         Player player = event.getPlayer();
         Session session = sessions.get(player.getUniqueId());
-        if (session == null || !samePosition(session.position, event.getEditedBlockPosition())) {
-            return;
-        }
+        if (session == null || !samePosition(session.position, event.getEditedBlockPosition())) return;
 
         event.setCancelled(true);
         sessions.remove(player.getUniqueId());
@@ -89,15 +91,9 @@ public final class VirtualSignInputService implements Listener {
         List<String> pieces = new ArrayList<>();
         for (Component line : event.lines()) {
             String plain = PLAIN.serialize(line).trim();
-            if (!plain.isEmpty()) {
-                pieces.add(plain);
-            }
+            if (!plain.isEmpty()) pieces.add(plain);
         }
-        String input = String.join(" ", pieces).trim();
-        if (input.length() > 128) {
-            input = input.substring(0, 128);
-        }
-        session.callback.accept(input);
+        session.callback.accept(limit(String.join(" ", pieces).trim(), 128));
     }
 
     @EventHandler
@@ -107,9 +103,7 @@ public final class VirtualSignInputService implements Listener {
 
     public void clear(Player player) {
         Session session = sessions.remove(player.getUniqueId());
-        if (session != null) {
-            restore(player, session.location);
-        }
+        if (session != null) restore(player, session.location);
     }
 
     private Location chooseLocation(Player player) {
@@ -120,16 +114,17 @@ public final class VirtualSignInputService implements Listener {
     }
 
     private boolean samePosition(BlockPosition first, BlockPosition second) {
-        return first.blockX() == second.blockX()
-                && first.blockY() == second.blockY()
-                && first.blockZ() == second.blockZ();
+        return first.blockX() == second.blockX() && first.blockY() == second.blockY() && first.blockZ() == second.blockZ();
     }
 
     private void restore(Player player, Location location) {
-        if (!player.isOnline() || !player.getWorld().equals(location.getWorld())) {
-            return;
-        }
+        if (!player.isOnline() || !player.getWorld().equals(location.getWorld())) return;
         player.sendBlockChange(location, location.getBlock().getBlockData());
+    }
+
+    private String limit(String value, int max) {
+        String safe = value == null ? "" : value.trim();
+        return safe.length() > max ? safe.substring(0, max) : safe;
     }
 
     private static final class Session {
