@@ -12,6 +12,7 @@ modules:
   crates: true
   settings: true
   custom-tools: true
+  stats: true
 
 database:
   type: SQLITE
