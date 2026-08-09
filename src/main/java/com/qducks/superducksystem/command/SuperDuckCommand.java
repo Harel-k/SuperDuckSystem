@@ -14,7 +14,6 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -74,6 +73,7 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         plugin.configs().reload();
         plugin.rankPerks().reloadOnlinePlayers();
         plugin.modules().reload();
+        plugin.database().reloadBackupSchedule();
         sender.sendMessage(message("admin.reloaded", "<green>SuperDuckSystem configuration reloaded.</green>", "superduck"));
         return true;
     }
@@ -141,15 +141,18 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         if (args.length == 4) {
             try { amount = Integer.parseInt(args[3]); }
             catch (NumberFormatException exception) {
-                sender.sendRichMessage("<red>Amount must be a positive whole number.</red>"); return true;
+                sender.sendRichMessage("<red>Amount must be a positive whole number.</red>");
+                return true;
             }
         }
         if (amount <= 0 || amount > 64) {
-            sender.sendRichMessage("<red>Amount must be between 1 and 64.</red>"); return true;
+            sender.sendRichMessage("<red>Amount must be between 1 and 64.</red>");
+            return true;
         }
         ItemStack item = plugin.customItems().createConfigured(args[2], amount);
         if (item == null) {
-            sender.sendRichMessage("<red>Unknown custom item: <white>" + escape(args[2]) + "</white>.</red>"); return true;
+            sender.sendRichMessage("<red>Unknown custom item: <white>" + escape(args[2]) + "</white>.</red>");
+            return true;
         }
         target.getInventory().addItem(item).values().forEach(leftover -> target.getWorld().dropItemNaturally(target.getLocation(), leftover));
         sender.sendRichMessage("<green>Gave <white>" + item.getAmount() + "x " + escape(args[2]) + "</white> to <white>" + escape(target.getName()) + "</white>.</green>");
@@ -161,11 +164,15 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private String ready(boolean ready) { return ready ? "<green>READY</green>" : "<gray>OFF/STARTING</gray>"; }
+    private String ready(boolean ready) {
+        return ready ? "<green>READY</green>" : "<gray>OFF/STARTING</gray>";
+    }
 
     private Component message(String path, String fallback, String label) {
         String raw = plugin.configs().messages().getString(path, fallback);
-        raw = raw.replace("%version%", plugin.getPluginMeta().getVersion()).replace("%server_name%", plugin.configs().serverName()).replace("%label%", label);
+        raw = raw.replace("%version%", plugin.getPluginMeta().getVersion())
+                .replace("%server_name%", plugin.configs().serverName())
+                .replace("%label%", label);
         return miniMessage.deserialize(raw);
     }
 
@@ -175,7 +182,9 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 
-    private String escape(String text) { return text == null ? "" : text.replace("<", "\\<"); }
+    private String escape(String text) {
+        return text == null ? "" : text.replace("<", "\\<");
+    }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
@@ -184,24 +193,38 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
             if (sender.hasPermission("superduck.admin.status")) options.add("status");
             if (sender.hasPermission("superduck.admin.reload")) options.add("reload");
             if (sender.hasPermission("superduck.admin.items")) options.add("giveitem");
-            if (sender.hasPermission("superduck.admin.emergency")) { options.add("readonly"); options.add("maintenance"); }
+            if (sender.hasPermission("superduck.admin.emergency")) {
+                options.add("readonly");
+                options.add("maintenance");
+            }
             if (sender.hasPermission("superduck.admin.backup")) options.add("backup");
             String input = args[0].toLowerCase(Locale.ROOT);
             return options.stream().filter(option -> option.startsWith(input)).toList();
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("giveitem") && sender.hasPermission("superduck.admin.items")) {
             String input = args[1].toLowerCase(Locale.ROOT);
-            return Bukkit.getOnlinePlayers().stream().map(Player::getName).filter(name -> name.toLowerCase(Locale.ROOT).startsWith(input)).toList();
+            return Bukkit.getOnlinePlayers().stream().map(Player::getName)
+                    .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(input)).toList();
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("giveitem") && sender.hasPermission("superduck.admin.items")) {
             ConfigurationSection items = plugin.configs().customItems().getConfigurationSection("items");
             if (items == null) return List.of();
             String input = args[2].toLowerCase(Locale.ROOT);
-            return items.getKeys(false).stream().filter(id -> id.toLowerCase(Locale.ROOT).startsWith(input)).sorted().toList();
+            return items.getKeys(false).stream()
+                    .filter(id -> id.toLowerCase(Locale.ROOT).startsWith(input)).sorted().toList();
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("readonly")) return List.of("on", "off", "status").stream().filter(v -> v.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
-        if (args.length == 2 && args[0].equalsIgnoreCase("maintenance")) return MAINTENANCE_MODULES.stream().filter(v -> v.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
-        if (args.length == 3 && args[0].equalsIgnoreCase("maintenance")) return List.of("on", "off").stream().filter(v -> v.startsWith(args[2].toLowerCase(Locale.ROOT))).toList();
+        if (args.length == 2 && args[0].equalsIgnoreCase("readonly")) {
+            return List.of("on", "off", "status").stream()
+                    .filter(v -> v.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("maintenance")) {
+            return MAINTENANCE_MODULES.stream()
+                    .filter(v -> v.startsWith(args[1].toLowerCase(Locale.ROOT))).toList();
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("maintenance")) {
+            return List.of("on", "off").stream()
+                    .filter(v -> v.startsWith(args[2].toLowerCase(Locale.ROOT))).toList();
+        }
         return List.of();
     }
 }
