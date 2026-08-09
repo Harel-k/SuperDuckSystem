@@ -24,24 +24,14 @@ public final class EconomyService {
         this.formatter = new MoneyFormatter(plugin);
     }
 
-    public MoneyFormatter formatter() {
-        return formatter;
-    }
-
-    public CompletableFuture<Void> warm(UUID uuid) {
-        return CompletableFuture.allOf(balance(uuid, CurrencyType.MONEY), balance(uuid, CurrencyType.DUCKS));
-    }
-
-    public BigDecimal cachedBalance(UUID uuid, CurrencyType currency) {
-        return cache.getOrDefault(new AccountKey(uuid, currency), startingBalance(currency));
-    }
+    public MoneyFormatter formatter() { return formatter; }
+    public CompletableFuture<Void> warm(UUID uuid) { return CompletableFuture.allOf(balance(uuid, CurrencyType.MONEY), balance(uuid, CurrencyType.DUCKS)); }
+    public BigDecimal cachedBalance(UUID uuid, CurrencyType currency) { return cache.getOrDefault(new AccountKey(uuid, currency), startingBalance(currency)); }
 
     public CompletableFuture<BigDecimal> balance(UUID uuid, CurrencyType currency) {
         AccountKey key = new AccountKey(uuid, currency);
         BigDecimal cached = cache.get(key);
-        if (cached != null) {
-            return CompletableFuture.completedFuture(cached);
-        }
+        if (cached != null) return CompletableFuture.completedFuture(cached);
         return plugin.database().submit(connection -> {
             BigDecimal value = readOrCreate(connection, uuid, currency);
             cache.put(key, value);
@@ -50,10 +40,10 @@ public final class EconomyService {
     }
 
     public CompletableFuture<BigDecimal> set(UUID uuid, CurrencyType currency, BigDecimal requested, TransactionType type, UUID actor) {
+        try { ensureMutationAllowed(type); }
+        catch (ReadOnlyException exception) { return CompletableFuture.failedFuture(exception); }
         BigDecimal amount = formatter.normalize(currency, requested);
-        if (amount.signum() < 0) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Balance cannot be negative"));
-        }
+        if (amount.signum() < 0) return CompletableFuture.failedFuture(new IllegalArgumentException("Balance cannot be negative"));
         return plugin.database().submit(connection -> {
             BigDecimal before = readOrCreate(connection, uuid, currency);
             writeBalance(connection, uuid, currency, amount);
@@ -64,12 +54,11 @@ public final class EconomyService {
     }
 
     public CompletableFuture<BigDecimal> add(UUID uuid, CurrencyType currency, BigDecimal requested, TransactionType type, UUID actor) {
+        try { ensureMutationAllowed(type); }
+        catch (ReadOnlyException exception) { return CompletableFuture.failedFuture(exception); }
         final BigDecimal amount;
-        try {
-            amount = requirePositive(currency, requested);
-        } catch (IllegalArgumentException exception) {
-            return CompletableFuture.failedFuture(exception);
-        }
+        try { amount = requirePositive(currency, requested); }
+        catch (IllegalArgumentException exception) { return CompletableFuture.failedFuture(exception); }
         return plugin.database().submit(connection -> {
             BigDecimal updated = creditWithinTransaction(connection, uuid, currency, amount, type, actor);
             publishBalance(uuid, currency, updated);
@@ -78,12 +67,11 @@ public final class EconomyService {
     }
 
     public CompletableFuture<BigDecimal> take(UUID uuid, CurrencyType currency, BigDecimal requested, TransactionType type, UUID actor) {
+        try { ensureMutationAllowed(type); }
+        catch (ReadOnlyException exception) { return CompletableFuture.failedFuture(exception); }
         final BigDecimal amount;
-        try {
-            amount = requirePositive(currency, requested);
-        } catch (IllegalArgumentException exception) {
-            return CompletableFuture.failedFuture(exception);
-        }
+        try { amount = requirePositive(currency, requested); }
+        catch (IllegalArgumentException exception) { return CompletableFuture.failedFuture(exception); }
         return plugin.database().submit(connection -> {
             BigDecimal updated = debitWithinTransaction(connection, uuid, currency, amount, type, actor);
             publishBalance(uuid, currency, updated);
@@ -92,56 +80,34 @@ public final class EconomyService {
     }
 
     public CompletableFuture<TransferResult> transfer(UUID from, UUID to, CurrencyType currency, BigDecimal requested) {
-        if (from.equals(to)) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Cannot transfer to yourself"));
-        }
+        try { ensureMutationAllowed(TransactionType.PAY); }
+        catch (ReadOnlyException exception) { return CompletableFuture.failedFuture(exception); }
+        if (from.equals(to)) return CompletableFuture.failedFuture(new IllegalArgumentException("Cannot transfer to yourself"));
         final BigDecimal amount;
-        try {
-            amount = requirePositive(currency, requested);
-        } catch (IllegalArgumentException exception) {
-            return CompletableFuture.failedFuture(exception);
-        }
+        try { amount = requirePositive(currency, requested); }
+        catch (IllegalArgumentException exception) { return CompletableFuture.failedFuture(exception); }
         return plugin.database().submit(connection -> {
             boolean oldAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
             try {
-                TransferResult result = transferWithinTransaction(
-                        connection, from, to, currency, amount, TransactionType.PAY
-                );
+                TransferResult result = transferWithinTransaction(connection, from, to, currency, amount, TransactionType.PAY);
                 connection.commit();
                 publishTransfer(from, to, currency, result);
                 return result;
             } catch (Exception exception) {
-                connection.rollback();
-                throw exception;
-            } finally {
-                connection.setAutoCommit(oldAutoCommit);
-            }
+                connection.rollback(); throw exception;
+            } finally { connection.setAutoCommit(oldAutoCommit); }
         });
     }
 
-    /**
-     * Performs a balance transfer using a connection owned by another database transaction.
-     * This method deliberately does not commit and does not touch the in-memory cache. The caller
-     * must commit its transaction first and then call {@link #publishTransfer(UUID, UUID, CurrencyType, TransferResult)}.
-     */
-    public TransferResult transferWithinTransaction(
-            Connection connection,
-            UUID from,
-            UUID to,
-            CurrencyType currency,
-            BigDecimal requested,
-            TransactionType type
-    ) throws SQLException {
-        if (from.equals(to)) {
-            throw new IllegalArgumentException("Cannot transfer to yourself");
-        }
+    public TransferResult transferWithinTransaction(Connection connection, UUID from, UUID to, CurrencyType currency,
+                                                    BigDecimal requested, TransactionType type) throws SQLException {
+        ensureMutationAllowed(type);
+        if (from.equals(to)) throw new IllegalArgumentException("Cannot transfer to yourself");
         BigDecimal amount = requirePositive(currency, requested);
         BigDecimal fromBalance = readOrCreate(connection, from, currency);
         BigDecimal toBalance = readOrCreate(connection, to, currency);
-        if (fromBalance.compareTo(amount) < 0) {
-            throw new InsufficientFundsException(fromBalance, amount);
-        }
+        if (fromBalance.compareTo(amount) < 0) throw new InsufficientFundsException(fromBalance, amount);
         BigDecimal newFrom = fromBalance.subtract(amount);
         BigDecimal newTo = toBalance.add(amount);
         writeBalance(connection, from, currency, newFrom);
@@ -150,42 +116,21 @@ public final class EconomyService {
         return new TransferResult(newFrom, newTo, amount);
     }
 
-    /**
-     * Debits a player balance inside an existing database transaction without committing or touching
-     * the cache. This is intended for escrow systems such as Orders where money is held by the order
-     * record rather than by a fake player account.
-     */
-    public BigDecimal debitWithinTransaction(
-            Connection connection,
-            UUID account,
-            CurrencyType currency,
-            BigDecimal requested,
-            TransactionType type,
-            UUID actor
-    ) throws SQLException {
+    public BigDecimal debitWithinTransaction(Connection connection, UUID account, CurrencyType currency,
+                                              BigDecimal requested, TransactionType type, UUID actor) throws SQLException {
+        ensureMutationAllowed(type);
         BigDecimal amount = requirePositive(currency, requested);
         BigDecimal current = readOrCreate(connection, account, currency);
-        if (current.compareTo(amount) < 0) {
-            throw new InsufficientFundsException(current, amount);
-        }
+        if (current.compareTo(amount) < 0) throw new InsufficientFundsException(current, amount);
         BigDecimal updated = current.subtract(amount);
         writeBalance(connection, account, currency, updated);
         record(connection, type, currency, actor, account, amount.negate());
         return updated;
     }
 
-    /**
-     * Credits a player balance inside an existing database transaction without committing or touching
-     * the cache. The caller must publish the returned balance after its outer transaction commits.
-     */
-    public BigDecimal creditWithinTransaction(
-            Connection connection,
-            UUID account,
-            CurrencyType currency,
-            BigDecimal requested,
-            TransactionType type,
-            UUID actor
-    ) throws SQLException {
+    public BigDecimal creditWithinTransaction(Connection connection, UUID account, CurrencyType currency,
+                                               BigDecimal requested, TransactionType type, UUID actor) throws SQLException {
+        ensureMutationAllowed(type);
         BigDecimal amount = requirePositive(currency, requested);
         BigDecimal current = readOrCreate(connection, account, currency);
         BigDecimal updated = current.add(amount);
@@ -199,27 +144,20 @@ public final class EconomyService {
         cache.put(new AccountKey(to, currency), result.receiverBalance());
     }
 
-    public void publishBalance(UUID account, CurrencyType currency, BigDecimal balance) {
-        cache.put(new AccountKey(account, currency), balance);
-    }
+    public void publishBalance(UUID account, CurrencyType currency, BigDecimal balance) { cache.put(new AccountKey(account, currency), balance); }
 
     public CompletableFuture<List<LeaderboardEntry>> topBalances(CurrencyType currency, int requestedLimit) {
         int limit = Math.max(1, Math.min(requestedLimit, 100));
         return plugin.database().submit(connection -> {
             List<LeaderboardEntry> entries = new ArrayList<>();
-            String sql = "SELECT b.uuid, p.username, b.amount FROM balances b "
-                    + "LEFT JOIN players p ON p.uuid=b.uuid WHERE b.currency=? "
-                    + "ORDER BY CAST(b.amount AS REAL) DESC LIMIT ?";
+            String sql = "SELECT b.uuid, p.username, b.amount FROM balances b LEFT JOIN players p ON p.uuid=b.uuid WHERE b.currency=? ORDER BY CAST(b.amount AS REAL) DESC LIMIT ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, currency.name());
-                statement.setInt(2, limit);
+                statement.setString(1, currency.name()); statement.setInt(2, limit);
                 try (ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
                         UUID uuid = UUID.fromString(result.getString("uuid"));
                         String username = result.getString("username");
-                        if (username == null) {
-                            username = uuid.toString();
-                        }
+                        if (username == null) username = uuid.toString();
                         entries.add(new LeaderboardEntry(uuid, username, new BigDecimal(result.getString("amount"))));
                     }
                 }
@@ -228,94 +166,67 @@ public final class EconomyService {
         });
     }
 
-    public void unload(UUID uuid) {
-        cache.keySet().removeIf(key -> key.uuid().equals(uuid));
-    }
+    public void unload(UUID uuid) { cache.keySet().removeIf(key -> key.uuid().equals(uuid)); }
 
     public BigDecimal startingBalance(CurrencyType currency) {
         String raw = plugin.configs().economy().getString("currencies." + currency.configKey() + ".starting-balance", "0");
         return formatter.normalize(currency, new BigDecimal(raw));
     }
 
+    private void ensureMutationAllowed(TransactionType type) {
+        if (!plugin.state().readOnly()) return;
+        if (type == TransactionType.ADMIN_GIVE || type == TransactionType.ADMIN_TAKE
+                || type == TransactionType.ADMIN_SET || type == TransactionType.ADMIN_RESET) return;
+        throw new ReadOnlyException();
+    }
+
     private BigDecimal requirePositive(CurrencyType currency, BigDecimal requested) {
         BigDecimal amount = formatter.normalize(currency, requested);
-        if (amount.signum() <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
-        }
+        if (amount.signum() <= 0) throw new IllegalArgumentException("Amount must be greater than zero");
         return amount;
     }
 
     private BigDecimal readOrCreate(Connection connection, UUID uuid, CurrencyType currency) throws SQLException {
-        try (PreparedStatement insert = connection.prepareStatement(
-                "INSERT OR IGNORE INTO balances(uuid, currency, amount) VALUES(?, ?, ?)")) {
-            insert.setString(1, uuid.toString());
-            insert.setString(2, currency.name());
-            insert.setString(3, startingBalance(currency).toPlainString());
-            insert.executeUpdate();
+        try (PreparedStatement insert = connection.prepareStatement("INSERT OR IGNORE INTO balances(uuid, currency, amount) VALUES(?, ?, ?)")) {
+            insert.setString(1, uuid.toString()); insert.setString(2, currency.name()); insert.setString(3, startingBalance(currency).toPlainString()); insert.executeUpdate();
         }
-        try (PreparedStatement query = connection.prepareStatement(
-                "SELECT amount FROM balances WHERE uuid=? AND currency=?")) {
-            query.setString(1, uuid.toString());
-            query.setString(2, currency.name());
+        try (PreparedStatement query = connection.prepareStatement("SELECT amount FROM balances WHERE uuid=? AND currency=?")) {
+            query.setString(1, uuid.toString()); query.setString(2, currency.name());
             try (ResultSet result = query.executeQuery()) {
-                if (!result.next()) {
-                    throw new SQLException("Balance row disappeared for " + uuid);
-                }
+                if (!result.next()) throw new SQLException("Balance row disappeared for " + uuid);
                 return new BigDecimal(result.getString("amount"));
             }
         }
     }
 
     private void writeBalance(Connection connection, UUID uuid, CurrencyType currency, BigDecimal amount) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO balances(uuid, currency, amount) VALUES(?, ?, ?) " +
-                        "ON CONFLICT(uuid, currency) DO UPDATE SET amount=excluded.amount")) {
-            statement.setString(1, uuid.toString());
-            statement.setString(2, currency.name());
-            statement.setString(3, amount.toPlainString());
-            statement.executeUpdate();
+        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO balances(uuid, currency, amount) VALUES(?, ?, ?) ON CONFLICT(uuid, currency) DO UPDATE SET amount=excluded.amount")) {
+            statement.setString(1, uuid.toString()); statement.setString(2, currency.name()); statement.setString(3, amount.toPlainString()); statement.executeUpdate();
         }
     }
 
     private void record(Connection connection, TransactionType type, CurrencyType currency, UUID actor, UUID target, BigDecimal amount) throws SQLException {
-        if (!plugin.configs().economy().getBoolean("transactions.keep-history", true)) {
-            return;
-        }
-        try (PreparedStatement statement = connection.prepareStatement(
-                "INSERT INTO transactions(id, created_at, type, currency, actor_uuid, target_uuid, amount) VALUES(?, ?, ?, ?, ?, ?, ?)")) {
-            statement.setString(1, UUID.randomUUID().toString());
-            statement.setLong(2, System.currentTimeMillis());
-            statement.setString(3, type.name());
-            statement.setString(4, currency.name());
-            statement.setString(5, actor == null ? null : actor.toString());
-            statement.setString(6, target == null ? null : target.toString());
-            statement.setString(7, amount.toPlainString());
-            statement.executeUpdate();
+        if (!plugin.configs().economy().getBoolean("transactions.keep-history", true)) return;
+        try (PreparedStatement statement = connection.prepareStatement("INSERT INTO transactions(id, created_at, type, currency, actor_uuid, target_uuid, amount) VALUES(?, ?, ?, ?, ?, ?, ?)")) {
+            statement.setString(1, UUID.randomUUID().toString()); statement.setLong(2, System.currentTimeMillis()); statement.setString(3, type.name());
+            statement.setString(4, currency.name()); statement.setString(5, actor == null ? null : actor.toString());
+            statement.setString(6, target == null ? null : target.toString()); statement.setString(7, amount.toPlainString()); statement.executeUpdate();
         }
     }
 
     private record AccountKey(UUID uuid, CurrencyType currency) {}
-
     public record TransferResult(BigDecimal senderBalance, BigDecimal receiverBalance, BigDecimal amount) {}
-
-    public record LeaderboardEntry(UUID uuid, String username, BigDecimal balance) {}
+    public record LeaderboardEntry(UUID uuid, String username, BigDecimal amount) {}
 
     public static final class InsufficientFundsException extends RuntimeException {
         private final BigDecimal balance;
         private final BigDecimal requested;
+        public InsufficientFundsException(BigDecimal balance, BigDecimal requested) { super("Insufficient funds"); this.balance = balance; this.requested = requested; }
+        public BigDecimal balance() { return balance; }
+        public BigDecimal requested() { return requested; }
+    }
 
-        public InsufficientFundsException(BigDecimal balance, BigDecimal requested) {
-            super("Insufficient funds");
-            this.balance = balance;
-            this.requested = requested;
-        }
-
-        public BigDecimal balance() {
-            return balance;
-        }
-
-        public BigDecimal requested() {
-            return requested;
-        }
+    public static final class ReadOnlyException extends RuntimeException {
+        public ReadOnlyException() { super("SuperDuckSystem is currently in read-only mode"); }
     }
 }
