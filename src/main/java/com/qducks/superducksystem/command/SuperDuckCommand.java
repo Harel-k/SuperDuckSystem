@@ -50,6 +50,7 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(miniMessage.deserialize("<gray>Server:</gray> <white>" + escape(plugin.configs().serverName()) + "</white>"));
         sender.sendMessage(miniMessage.deserialize("<gray>Database:</gray> " + (plugin.database().isReady() ? "<green>READY</green>" : "<yellow>STARTING</yellow>")));
         sender.sendMessage(miniMessage.deserialize("<gray>Bedrock integration:</gray> " + (plugin.integrations().bedrock().available() ? "<green>FLOODGATE</green>" : "<gray>OFF</gray>")));
+        sender.sendMessage(miniMessage.deserialize("<gray>LuckPerms rank perks:</gray> " + (plugin.integrations().ranks().available() ? "<green>READY</green>" : "<gray>FALLBACK</gray>")));
         sender.sendMessage(miniMessage.deserialize("<gray>Registered modules:</gray> <white>" + plugin.modules().all().size() + "</white>"));
         return true;
     }
@@ -60,6 +61,7 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         plugin.configs().reload();
+        plugin.rankPerks().reloadOnlinePlayers();
         sender.sendMessage(message("admin.reloaded", "<green>SuperDuckSystem configuration reloaded.</green>", "superduck"));
         return true;
     }
