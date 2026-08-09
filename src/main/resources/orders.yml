@@ -207,10 +207,7 @@ confirmation:
 my-orders:
   title: "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray>"
   rows: 6
-  filler:
-    enabled: true
-    material: BLACK_STAINED_GLASS_PANE
-    name: " "
+  # 45 visible market slots: enough for the default Duck+++ perk.
   content-slots:
     - 0
     - 1
@@ -248,6 +245,19 @@ my-orders:
     - 33
     - 34
     - 35
+    - 36
+    - 37
+    - 38
+    - 39
+    - 40
+    - 41
+    - 42
+    - 43
+    - 44
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
   empty-slot:
     material: LIME_STAINED_GLASS_PANE
     name: "<green><bold>+ Create Order</bold></green>"
