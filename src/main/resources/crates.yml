@@ -1,0 +1,252 @@
+# SuperDuckSystem Crates & Keys configuration
+# Keys are DIGITAL. Players earn them from online playtime milestones and other rewards.
+# Physical crate models are intentionally not used; crate opening will use inventory/scroll GUIs.
+
+playtime:
+  # Completed milestones are permanent. Leaving only resets progress on the current milestone.
+  reset-current-progress-on-leave: true
+  milestones:
+    - key: starter
+      minutes: 5
+    - key: common
+      minutes: 15
+    - key: rare
+      minutes: 30
+    - key: epic
+      minutes: 45
+    - key: legendary
+      minutes: 60
+    - key: duck
+      minutes: 90
+
+  # After every milestone has been completed, this reward repeats while the player stays online.
+  repeat:
+    key: common
+    minutes: 30
+
+key-menu:
+  title: "<gold><bold>Your Keys</bold></gold>"
+  rows: 6
+  filler:
+    enabled: true
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+  progress:
+    slot: 49
+    material: CLOCK
+    name: "<aqua><bold>Playtime Key Progress</bold></aqua>"
+
+keys:
+  starter:
+    display-name: "Starter Key"
+    slot: 10
+    material: WOODEN_SHOVEL
+    name: "<green><bold>Starter Key</bold></green>"
+    lore:
+      - "<gray>Keys:</gray> <white>%amount%</white>"
+      - ""
+      - "%progress%"
+      - "<dark_gray>Designed for a small early-game boost.</dark_gray>"
+  common:
+    display-name: "Common Key"
+    slot: 12
+    material: TRIPWIRE_HOOK
+    name: "<white><bold>Common Key</bold></white>"
+    lore:
+      - "<gray>Keys:</gray> <white>%amount%</white>"
+      - ""
+      - "%progress%"
+  rare:
+    display-name: "Rare Key"
+    slot: 14
+    material: LAPIS_LAZULI
+    name: "<blue><bold>Rare Key</bold></blue>"
+    lore:
+      - "<gray>Keys:</gray> <white>%amount%</white>"
+      - ""
+      - "%progress%"
+  epic:
+    display-name: "Epic Key"
+    slot: 16
+    material: AMETHYST_SHARD
+    name: "<light_purple><bold>Epic Key</bold></light_purple>"
+    lore:
+      - "<gray>Keys:</gray> <white>%amount%</white>"
+      - ""
+      - "%progress%"
+  legendary:
+    display-name: "Legendary Key"
+    slot: 30
+    material: GOLD_INGOT
+    name: "<gold><bold>Legendary Key</bold></gold>"
+    lore:
+      - "<gray>Keys:</gray> <white>%amount%</white>"
+      - ""
+      - "%progress%"
+  duck:
+    display-name: "Duck Key"
+    slot: 32
+    material: FEATHER
+    name: "<yellow><bold>Duck Key</bold></yellow>"
+    lore:
+      - "<gray>Keys:</gray> <white>%amount%</white>"
+      - ""
+      - "%progress%"
+      - "<yellow>Special QDucks crate.</yellow>"
+
+# Loot pools are deliberately conservative defaults and are fully editable.
+# weight is relative chance, not a percentage. Supported reward types will be ITEM, MONEY, DUCKS and KEY.
+crates:
+  starter:
+    key: starter
+    display-name: "Starter Crate"
+    opening-style: QUICK
+    loot:
+      - type: ITEM
+        material: STONE_SWORD
+        amount: 1
+        weight: 20
+      - type: ITEM
+        material: STONE_PICKAXE
+        amount: 1
+        weight: 20
+      - type: ITEM
+        material: COOKED_BEEF
+        amount: 16
+        weight: 30
+      - type: ITEM
+        material: IRON_INGOT
+        amount: 4
+        weight: 15
+      - type: MONEY
+        amount: "500"
+        weight: 15
+
+  common:
+    key: common
+    display-name: "Common Crate"
+    opening-style: QUICK
+    loot:
+      - type: ITEM
+        material: CHAINMAIL_HELMET
+        amount: 1
+        weight: 12
+      - type: ITEM
+        material: CHAINMAIL_CHESTPLATE
+        amount: 1
+        weight: 10
+      - type: ITEM
+        material: CHAINMAIL_LEGGINGS
+        amount: 1
+        weight: 10
+      - type: ITEM
+        material: CHAINMAIL_BOOTS
+        amount: 1
+        weight: 12
+      - type: ITEM
+        material: STONE_SWORD
+        amount: 1
+        weight: 14
+      - type: ITEM
+        material: COOKED_BEEF
+        amount: 16
+        weight: 18
+      - type: ITEM
+        material: IRON_INGOT
+        amount: 8
+        weight: 12
+      - type: MONEY
+        amount: "1000"
+        weight: 12
+
+  rare:
+    key: rare
+    display-name: "Rare Crate"
+    opening-style: SCROLL
+    loot:
+      - type: ITEM
+        material: IRON_INGOT
+        amount: 16
+        weight: 30
+      - type: ITEM
+        material: DIAMOND
+        amount: 2
+        weight: 12
+      - type: MONEY
+        amount: "2500"
+        weight: 30
+      - type: DUCKS
+        amount: "2"
+        weight: 18
+      - type: KEY
+        key: common
+        amount: 1
+        weight: 10
+
+  epic:
+    key: epic
+    display-name: "Epic Crate"
+    opening-style: SCROLL
+    loot:
+      - type: ITEM
+        material: DIAMOND
+        amount: 4
+        weight: 25
+      - type: ITEM
+        material: EXPERIENCE_BOTTLE
+        amount: 16
+        weight: 25
+      - type: MONEY
+        amount: "5000"
+        weight: 30
+      - type: DUCKS
+        amount: "5"
+        weight: 15
+      - type: KEY
+        key: rare
+        amount: 1
+        weight: 5
+
+  legendary:
+    key: legendary
+    display-name: "Legendary Crate"
+    opening-style: SCROLL
+    loot:
+      - type: ITEM
+        material: DIAMOND
+        amount: 8
+        weight: 25
+      - type: ITEM
+        material: GOLDEN_APPLE
+        amount: 2
+        weight: 20
+      - type: MONEY
+        amount: "10000"
+        weight: 30
+      - type: DUCKS
+        amount: "10"
+        weight: 20
+      - type: KEY
+        key: epic
+        amount: 1
+        weight: 5
+
+  duck:
+    key: duck
+    display-name: "Duck Crate"
+    opening-style: SCROLL
+    loot:
+      - type: MONEY
+        amount: "15000"
+        weight: 30
+      - type: DUCKS
+        amount: "20"
+        weight: 30
+      - type: ITEM
+        material: DIAMOND
+        amount: 10
+        weight: 25
+      - type: KEY
+        key: legendary
+        amount: 1
+        weight: 15
