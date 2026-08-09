@@ -39,7 +39,7 @@ public final class BalanceTopCommand implements CommandExecutor {
                         messages.send(sender, "economy.baltop-line", "<yellow>#%rank%</yellow> <white>%player%</white> <gray>-</gray> <green>%balance%</green>", Map.of(
                                 "rank", Integer.toString(index + 1),
                                 "player", entry.username(),
-                                "balance", plugin.economy().formatter().format(CurrencyType.MONEY, entry.balance())
+                                "balance", plugin.economy().formatter().format(CurrencyType.MONEY, entry.amount())
                         ));
                     }
                 }));
