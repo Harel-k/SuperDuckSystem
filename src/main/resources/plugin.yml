@@ -120,6 +120,9 @@ permissions:
   superduck.admin.keys:
     description: Grant digital crate keys
     default: op
+  superduck.admin.items:
+    description: Give configured SuperDuck custom items
+    default: op
   superduck.admin.economy:
     description: Manage player money and Ducks
     default: op
