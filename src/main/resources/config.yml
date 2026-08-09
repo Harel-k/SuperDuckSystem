@@ -8,7 +8,7 @@ modules:
   economy: true
   shop: true
   auctions: true
-  orders: false
+  orders: true
   crates: false
   settings: true
   custom-tools: false
