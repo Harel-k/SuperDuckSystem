@@ -10,7 +10,8 @@ public enum PlayerSetting {
     AUCTION_SELL_CONFIRMATION("auction-sell-confirmation", true),
     AUCTION_BUY_CONFIRMATION("auction-buy-confirmation", true),
     ORDER_CREATE_CONFIRMATION("order-create-confirmation", true),
-    INSTANT_AUCTION_PURCHASE("instant-auction-purchase", false);
+    INSTANT_AUCTION_PURCHASE("instant-auction-purchase", false),
+    INSTANT_SELL("instant-sell", false);
 
     private final String configKey;
     private final boolean fallback;
