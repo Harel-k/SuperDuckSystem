@@ -1,0 +1,42 @@
+# SuperDuckSystem main configuration
+# Nearly every gameplay value is intended to be configurable.
+
+server:
+  name: "QDucks SMP"
+
+modules:
+  economy: false
+  ducks: false
+  shop: false
+  auctions: false
+  orders: false
+  crates: false
+  settings: false
+  custom-tools: false
+
+database:
+  type: SQLITE
+  file: data.db
+  wal: true
+
+integrations:
+  placeholderapi: true
+  floodgate: true
+  luckperms: true
+  vaultunlocked: true
+
+custom-tools:
+  duck-pickaxe:
+    area-width: 3
+    area-height: 3
+    depth: 1
+  duck-shovel:
+    area-width: 3
+    area-height: 3
+    depth: 1
+  duck-axe:
+    tree-vein-enabled: true
+    max-blocks: 256
+
+messages:
+  prefix: "<aqua><bold>%server_name%</bold></aqua> <dark_gray>»</dark_gray> "
