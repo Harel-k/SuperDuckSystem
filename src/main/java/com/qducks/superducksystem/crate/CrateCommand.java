@@ -11,12 +11,14 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Locale;
 
 public final class CrateCommand implements CommandExecutor {
+    private final SuperDuckSystem plugin;
     private final CrateMenu menu;
     private final CratePreviewMenu previewMenu;
     private final CrateService service;
     private final MessageService messages;
 
     public CrateCommand(SuperDuckSystem plugin, KeyService keys, CrateService service) {
+        this.plugin = plugin;
         this.menu = new CrateMenu(plugin, keys, service);
         this.previewMenu = new CratePreviewMenu(plugin, keys, service);
         this.service = service;
@@ -29,32 +31,30 @@ public final class CrateCommand implements CommandExecutor {
             messages.send(sender, "errors.players-only", "<red>This command can only be used by players.</red>");
             return true;
         }
-
+        if (plugin.state().maintenance("crates")) {
+            player.sendRichMessage("<red>Crates are temporarily in maintenance mode.</red>");
+            return true;
+        }
         if (args.length == 0) {
             menu.open(player);
             return true;
         }
-
         if (args.length == 2 && args[0].equalsIgnoreCase("preview")) {
             String crateId = args[1].toLowerCase(Locale.ROOT);
             if (!service.configuredCrates().stream().anyMatch(id -> id.equalsIgnoreCase(crateId))) {
-                messages.send(player, "crates.invalid", "<red>That crate does not exist.</red>");
-                return true;
+                messages.send(player, "crates.invalid", "<red>That crate does not exist.</red>"); return true;
             }
             previewMenu.open(player, crateId);
             return true;
         }
-
         if (args.length == 1) {
             String crateId = args[0].toLowerCase(Locale.ROOT);
             if (!service.configuredCrates().stream().anyMatch(id -> id.equalsIgnoreCase(crateId))) {
-                messages.send(player, "crates.invalid", "<red>That crate does not exist.</red>");
-                return true;
+                messages.send(player, "crates.invalid", "<red>That crate does not exist.</red>"); return true;
             }
             menu.openCrate(player, crateId);
             return true;
         }
-
         messages.send(player, "crates.usage", "<red>Usage: /crates [crate] or /crates preview <crate></red>");
         return true;
     }
