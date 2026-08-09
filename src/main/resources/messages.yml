@@ -48,6 +48,13 @@ settings:
   saved: "<green>Your settings were saved.</green>"
   failed: "<red>Could not save your settings.</red>"
 
+shop:
+  empty: "<gray>The shop has no configured categories.</gray>"
+  category-empty: "<gray>That category is empty.</gray>"
+  insufficient: "<red>You do not have enough money for that purchase.</red>"
+  failed: "<red>The purchase failed.</red>"
+  bought: "<green>Bought <white>%amount%x %item%</white> for %price%.</green>"
+
 sell:
   nothing: "<red>There are no sellable items in the menu.</red>"
   failed: "<red>The sale failed, so your items were returned.</red>"
