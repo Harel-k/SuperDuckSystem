@@ -18,10 +18,10 @@ public final class KeyCommand implements CommandExecutor {
     private final KeyMenu menu;
     private final MessageService messages;
 
-    public KeyCommand(SuperDuckSystem plugin, KeyService service) {
+    public KeyCommand(SuperDuckSystem plugin, KeyService service, CrateService crates) {
         this.plugin = plugin;
         this.service = service;
-        this.menu = new KeyMenu(plugin, service);
+        this.menu = new KeyMenu(plugin, service, crates);
         this.messages = new MessageService(plugin);
     }
 
