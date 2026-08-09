@@ -16,6 +16,7 @@ import com.qducks.superducksystem.rank.RankPerkService;
 import com.qducks.superducksystem.reward.RewardService;
 import com.qducks.superducksystem.settings.SettingsService;
 import com.qducks.superducksystem.stats.StatsService;
+import com.qducks.superducksystem.system.SystemStateService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -33,11 +34,13 @@ public final class SuperDuckSystem extends JavaPlugin {
     private StatsService statsService;
     private KeyService keyService;
     private RewardService rewardService;
+    private SystemStateService systemStateService;
 
     @Override
     public void onEnable() {
         this.configManager = new ConfigManager(this);
         this.configManager.load();
+        this.systemStateService = new SystemStateService();
 
         this.databaseManager = new DatabaseManager(this);
         this.databaseManager.start();
@@ -65,9 +68,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         rankPerkService.reloadOnlinePlayers();
 
         PluginCommand command = getCommand("superduck");
-        if (command == null) {
-            throw new IllegalStateException("Command /superduck is missing from plugin.yml");
-        }
+        if (command == null) throw new IllegalStateException("Command /superduck is missing from plugin.yml");
         SuperDuckCommand handler = new SuperDuckCommand(this);
         command.setExecutor(handler);
         command.setTabCompleter(handler);
@@ -96,4 +97,5 @@ public final class SuperDuckSystem extends JavaPlugin {
     public StatsService stats() { return statsService; }
     public KeyService keys() { return keyService; }
     public RewardService rewards() { return rewardService; }
+    public SystemStateService state() { return systemStateService; }
 }
