@@ -62,6 +62,7 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         }
         plugin.configs().reload();
         plugin.rankPerks().reloadOnlinePlayers();
+        plugin.modules().reload();
         sender.sendMessage(message("admin.reloaded", "<green>SuperDuckSystem configuration reloaded.</green>", "superduck"));
         return true;
     }
