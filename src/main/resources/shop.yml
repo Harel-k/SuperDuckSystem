@@ -1,6 +1,175 @@
 # SuperDuckSystem shop and sell configuration
 # Prices below are starter defaults only. Change every value to fit your server economy.
 
+shop:
+  menu:
+    title: "<aqua><bold>Server Shop</bold></aqua>"
+    rows: 6
+    filler:
+      enabled: true
+      material: BLACK_STAINED_GLASS_PANE
+      name: " "
+
+  item-menu:
+    title: "<aqua><bold>%category%</bold></aqua> <gray>%page%/%pages%</gray>"
+    rows: 6
+    bulk-buy-amount: 64
+    not-for-sale: "<red>Not for sale</red>"
+    price-line: "<gray>Buy:</gray> <green>%price%</green>"
+    click-line: "<yellow>Left-click: buy 1</yellow>"
+    shift-click-line: "<yellow>Shift-left-click: buy %bulk%</yellow>"
+    content-slots:
+      - 10
+      - 11
+      - 12
+      - 13
+      - 14
+      - 15
+      - 16
+      - 19
+      - 20
+      - 21
+      - 22
+      - 23
+      - 24
+      - 25
+      - 28
+      - 29
+      - 30
+      - 31
+      - 32
+      - 33
+      - 34
+      - 37
+      - 38
+      - 39
+      - 40
+      - 41
+      - 42
+      - 43
+    filler:
+      enabled: true
+      material: BLACK_STAINED_GLASS_PANE
+      name: " "
+    previous:
+      slot: 45
+      material: ARROW
+      name: "<yellow>Previous Page</yellow>"
+    back:
+      slot: 49
+      material: BARRIER
+      name: "<red>Back</red>"
+    next:
+      slot: 53
+      material: ARROW
+      name: "<yellow>Next Page</yellow>"
+
+  # Categories and their contents are fully configurable. Add/remove categories or items freely.
+  # buy-price <= 0 makes an item display-only/not purchasable.
+  categories:
+    farming:
+      enabled: true
+      slot: 20
+      material: WHEAT
+      name: "<yellow><bold>Farming</bold></yellow>"
+      plain-name: "Farming"
+      lore:
+        - "<gray>Food and farming supplies.</gray>"
+        - "<yellow>Click to browse.</yellow>"
+      items:
+        wheat:
+          material: WHEAT
+          buy-price: "8"
+        carrot:
+          material: CARROT
+          buy-price: "8"
+        potato:
+          material: POTATO
+          buy-price: "8"
+        sugar_cane:
+          material: SUGAR_CANE
+          buy-price: "10"
+        cactus:
+          material: CACTUS
+          buy-price: "10"
+        pumpkin:
+          material: PUMPKIN
+          buy-price: "18"
+        melon_slice:
+          material: MELON_SLICE
+          buy-price: "5"
+        steak:
+          material: COOKED_BEEF
+          name: "<gold>Steak</gold>"
+          buy-price: "24"
+
+    mining:
+      enabled: true
+      slot: 22
+      material: DIAMOND_PICKAXE
+      name: "<aqua><bold>Mining</bold></aqua>"
+      plain-name: "Mining"
+      lore:
+        - "<gray>Ores, minerals and mining resources.</gray>"
+        - "<yellow>Click to browse.</yellow>"
+      items:
+        coal:
+          material: COAL
+          buy-price: "14"
+        iron_ingot:
+          material: IRON_INGOT
+          buy-price: "34"
+        copper_ingot:
+          material: COPPER_INGOT
+          buy-price: "14"
+        gold_ingot:
+          material: GOLD_INGOT
+          buy-price: "58"
+        redstone:
+          material: REDSTONE
+          buy-price: "12"
+        lapis_lazuli:
+          material: LAPIS_LAZULI
+          buy-price: "15"
+        quartz:
+          material: QUARTZ
+          buy-price: "18"
+        diamond:
+          material: DIAMOND
+          buy-price: "250"
+        emerald:
+          material: EMERALD
+          buy-price: "220"
+
+    mob-drops:
+      enabled: true
+      slot: 24
+      material: ROTTEN_FLESH
+      name: "<red><bold>Mob Drops</bold></red>"
+      plain-name: "Mob Drops"
+      lore:
+        - "<gray>Useful drops from hostile mobs.</gray>"
+        - "<yellow>Click to browse.</yellow>"
+      items:
+        rotten_flesh:
+          material: ROTTEN_FLESH
+          buy-price: "10"
+        bone:
+          material: BONE
+          buy-price: "14"
+        string:
+          material: STRING
+          buy-price: "14"
+        gunpowder:
+          material: GUNPOWDER
+          buy-price: "24"
+        spider_eye:
+          material: SPIDER_EYE
+          buy-price: "14"
+        ender_pearl:
+          material: ENDER_PEARL
+          buy-price: "50"
+
 sell:
   safety:
     reject-superduck-items: true
@@ -13,9 +182,6 @@ sell:
   menu:
     title: "<green><bold>Sell Items</bold></green>"
     rows: 6
-
-    # Players may manually place items only into these slots. Shift-click and drag insertion are
-    # intentionally blocked by the GUI engine for dupe/exploit safety.
     input-slots:
       - 10
       - 11
@@ -38,11 +204,9 @@ sell:
       - 32
       - 33
       - 34
-
     filler:
       material: GRAY_STAINED_GLASS_PANE
       name: " "
-
     summary:
       slot: 45
       material: PAPER
@@ -50,7 +214,6 @@ sell:
       value-line: "<gray>Value:</gray> <green>%value%</green>"
       items-line: "<gray>Sellable items:</gray> <white>%items%</white>"
       unsellable-line: "<gray>Unsellable items:</gray> <red>%unsellable%</red>"
-
     confirm:
       slot: 49
       material: EMERALD_BLOCK
@@ -61,7 +224,6 @@ sell:
       line: "<yellow>Click to continue.</yellow>"
       armed-line: "<green>Click again to confirm.</green>"
       instant-line: "<yellow>Click to sell immediately.</yellow>"
-
     cancel:
       slot: 53
       material: BARRIER
