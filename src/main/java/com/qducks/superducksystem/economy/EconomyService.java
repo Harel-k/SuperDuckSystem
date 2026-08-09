@@ -71,11 +71,8 @@ public final class EconomyService {
             return CompletableFuture.failedFuture(exception);
         }
         return plugin.database().submit(connection -> {
-            BigDecimal current = readOrCreate(connection, uuid, currency);
-            BigDecimal updated = current.add(amount);
-            writeBalance(connection, uuid, currency, updated);
-            record(connection, type, currency, actor, uuid, amount);
-            cache.put(new AccountKey(uuid, currency), updated);
+            BigDecimal updated = creditWithinTransaction(connection, uuid, currency, amount, type, actor);
+            publishBalance(uuid, currency, updated);
             return updated;
         });
     }
@@ -88,14 +85,8 @@ public final class EconomyService {
             return CompletableFuture.failedFuture(exception);
         }
         return plugin.database().submit(connection -> {
-            BigDecimal current = readOrCreate(connection, uuid, currency);
-            if (current.compareTo(amount) < 0) {
-                throw new InsufficientFundsException(current, amount);
-            }
-            BigDecimal updated = current.subtract(amount);
-            writeBalance(connection, uuid, currency, updated);
-            record(connection, type, currency, actor, uuid, amount.negate());
-            cache.put(new AccountKey(uuid, currency), updated);
+            BigDecimal updated = debitWithinTransaction(connection, uuid, currency, amount, type, actor);
+            publishBalance(uuid, currency, updated);
             return updated;
         });
     }
@@ -159,9 +150,57 @@ public final class EconomyService {
         return new TransferResult(newFrom, newTo, amount);
     }
 
+    /**
+     * Debits a player balance inside an existing database transaction without committing or touching
+     * the cache. This is intended for escrow systems such as Orders where money is held by the order
+     * record rather than by a fake player account.
+     */
+    public BigDecimal debitWithinTransaction(
+            Connection connection,
+            UUID account,
+            CurrencyType currency,
+            BigDecimal requested,
+            TransactionType type,
+            UUID actor
+    ) throws SQLException {
+        BigDecimal amount = requirePositive(currency, requested);
+        BigDecimal current = readOrCreate(connection, account, currency);
+        if (current.compareTo(amount) < 0) {
+            throw new InsufficientFundsException(current, amount);
+        }
+        BigDecimal updated = current.subtract(amount);
+        writeBalance(connection, account, currency, updated);
+        record(connection, type, currency, actor, account, amount.negate());
+        return updated;
+    }
+
+    /**
+     * Credits a player balance inside an existing database transaction without committing or touching
+     * the cache. The caller must publish the returned balance after its outer transaction commits.
+     */
+    public BigDecimal creditWithinTransaction(
+            Connection connection,
+            UUID account,
+            CurrencyType currency,
+            BigDecimal requested,
+            TransactionType type,
+            UUID actor
+    ) throws SQLException {
+        BigDecimal amount = requirePositive(currency, requested);
+        BigDecimal current = readOrCreate(connection, account, currency);
+        BigDecimal updated = current.add(amount);
+        writeBalance(connection, account, currency, updated);
+        record(connection, type, currency, actor, account, amount);
+        return updated;
+    }
+
     public void publishTransfer(UUID from, UUID to, CurrencyType currency, TransferResult result) {
         cache.put(new AccountKey(from, currency), result.senderBalance());
         cache.put(new AccountKey(to, currency), result.receiverBalance());
+    }
+
+    public void publishBalance(UUID account, CurrencyType currency, BigDecimal balance) {
+        cache.put(new AccountKey(account, currency), balance);
     }
 
     public CompletableFuture<List<LeaderboardEntry>> topBalances(CurrencyType currency, int requestedLimit) {
