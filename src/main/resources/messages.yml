@@ -64,7 +64,7 @@ auction:
   load-failed: "<red>Could not load the Auction House.</red>"
   sell-usage: "<red>Usage: /ah sell <price></red>"
   hold-item: "<red>Hold the item you want to sell in your main hand.</red>"
-  enter-price: "<yellow>Enter the listing price on the sign.</yellow>"
+  enter-price: "<yellow>Enter the listing price.</yellow>"
   item-changed: "<red>That inventory stack changed. Choose the item again.</red>"
   own-item: "<red>You cannot buy your own auction.</red>"
   slot-limit: "<red>You are using all %limit% of your auction slots.</red>"
@@ -83,8 +83,8 @@ auction:
 
 order:
   load-failed: "<red>Could not load Buy Orders.</red>"
-  enter-amount: "<yellow>Enter the amount you want on the sign.</yellow>"
-  enter-price: "<yellow>Enter the price per item on the sign.</yellow>"
+  enter-amount: "<yellow>Enter the amount you want.</yellow>"
+  enter-price: "<yellow>Enter the price per item.</yellow>"
   invalid-amount: "<red>Enter a whole number between 1 and %maximum%.</red>"
   invalid-price: "<red>That is not a valid price per item.</red>"
   price-range: "<red>Price each must be between %minimum% and %maximum%.</red>"
@@ -119,3 +119,4 @@ crates:
   open-failed: "<red>Could not open that crate.</red>"
   reward-failed: "<red>The reward failed, so your key was refunded.</red>"
   reward: "<gold>You won <white>%reward%</white> from %crate%!</gold>"
+  broadcast: "<gold><white>%player%</white> won <yellow>%reward%</yellow> from <white>%crate%</white>!</gold>"
