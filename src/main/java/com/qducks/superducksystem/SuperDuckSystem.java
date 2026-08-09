@@ -5,6 +5,7 @@ import com.qducks.superducksystem.config.ConfigManager;
 import com.qducks.superducksystem.database.DatabaseManager;
 import com.qducks.superducksystem.economy.EconomyService;
 import com.qducks.superducksystem.gui.GuiManager;
+import com.qducks.superducksystem.input.VirtualSignInputService;
 import com.qducks.superducksystem.integration.IntegrationManager;
 import com.qducks.superducksystem.item.CustomItemService;
 import com.qducks.superducksystem.module.ModuleManager;
@@ -22,6 +23,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private ModuleManager moduleManager;
     private CustomItemService customItemService;
     private GuiManager guiManager;
+    private VirtualSignInputService signInputService;
 
     @Override
     public void onEnable() {
@@ -35,6 +37,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.settingsService = new SettingsService(this);
         this.customItemService = new CustomItemService(this);
         this.guiManager = new GuiManager(this);
+        this.signInputService = new VirtualSignInputService(this);
 
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
@@ -44,6 +47,7 @@ public final class SuperDuckSystem extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new PlayerProfileListener(this), this);
         getServer().getPluginManager().registerEvents(guiManager, this);
+        getServer().getPluginManager().registerEvents(signInputService, this);
 
         PluginCommand command = getCommand("superduck");
         if (command == null) {
@@ -96,5 +100,9 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     public GuiManager guis() {
         return guiManager;
+    }
+
+    public VirtualSignInputService signInput() {
+        return signInputService;
     }
 }
