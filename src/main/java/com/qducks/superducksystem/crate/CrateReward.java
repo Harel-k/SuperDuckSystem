@@ -11,10 +11,12 @@ public record CrateReward(
         BigDecimal currencyAmount,
         String keyId,
         int keyAmount,
+        String customItemId,
         double weight
 ) {
     public enum Type {
         ITEM,
+        CUSTOM_ITEM,
         MONEY,
         DUCKS,
         KEY
