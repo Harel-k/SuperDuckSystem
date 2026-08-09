@@ -7,7 +7,7 @@ server:
 modules:
   economy: true
   shop: true
-  auctions: false
+  auctions: true
   orders: false
   crates: false
   settings: true
