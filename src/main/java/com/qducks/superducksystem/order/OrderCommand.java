@@ -11,10 +11,12 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Arrays;
 
 public final class OrderCommand implements CommandExecutor {
+    private final SuperDuckSystem plugin;
     private final OrderMenu menu;
     private final MessageService messages;
 
     public OrderCommand(SuperDuckSystem plugin, OrderService service) {
+        this.plugin = plugin;
         this.menu = new OrderMenu(plugin, service);
         this.messages = new MessageService(plugin);
     }
@@ -25,17 +27,18 @@ public final class OrderCommand implements CommandExecutor {
             messages.send(sender, "errors.players-only", "<red>This command can only be used by players.</red>");
             return true;
         }
-
+        if (plugin.state().maintenance("orders")) {
+            player.sendRichMessage("<red>Buy Orders are temporarily in maintenance mode.</red>");
+            return true;
+        }
         if (args.length == 0) {
             menu.open(player, "", OrderSort.NEWEST, 0);
             return true;
         }
-
         if (args[0].equalsIgnoreCase("create")) {
             menu.beginCreate(player);
             return true;
         }
-
         String search = String.join(" ", Arrays.asList(args)).trim();
         menu.open(player, search, OrderSort.NEWEST, 0);
         return true;
