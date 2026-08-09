@@ -12,6 +12,7 @@ defaults:
   auction-buy-confirmation: true
   order-create-confirmation: true
   instant-auction-purchase: false
+  instant-sell: false
 
 menu:
   title: "<aqua><bold>Player Settings</bold></aqua>"
@@ -149,6 +150,19 @@ menu:
       lore:
         - "<gray>Buy immediately when clicking an AH listing.</gray>"
         - "<red>This skips the normal buy confirmation.</red>"
+        - ""
+        - "%status%"
+        - "<yellow>Click to toggle.</yellow>"
+    instant-sell:
+      enabled: true
+      slot: 33
+      material: HOPPER
+      name: "<green><bold>Instant Sell</bold></green>"
+      plain-name: "Instant Sell"
+      bedrock-label: "Instant sell"
+      lore:
+        - "<gray>Sell immediately when using the sell interface.</gray>"
+        - "<red>This skips the normal sell confirmation.</red>"
         - ""
         - "%status%"
         - "<yellow>Click to toggle.</yellow>"
