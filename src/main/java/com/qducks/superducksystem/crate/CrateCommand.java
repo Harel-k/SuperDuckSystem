@@ -12,11 +12,13 @@ import java.util.Locale;
 
 public final class CrateCommand implements CommandExecutor {
     private final CrateMenu menu;
+    private final CratePreviewMenu previewMenu;
     private final CrateService service;
     private final MessageService messages;
 
     public CrateCommand(SuperDuckSystem plugin, KeyService keys, CrateService service) {
         this.menu = new CrateMenu(plugin, keys, service);
+        this.previewMenu = new CratePreviewMenu(plugin, keys, service);
         this.service = service;
         this.messages = new MessageService(plugin);
     }
@@ -39,7 +41,7 @@ public final class CrateCommand implements CommandExecutor {
                 messages.send(player, "crates.invalid", "<red>That crate does not exist.</red>");
                 return true;
             }
-            menu.preview(player, crateId);
+            previewMenu.open(player, crateId);
             return true;
         }
 
