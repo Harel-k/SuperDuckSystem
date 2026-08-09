@@ -2,6 +2,7 @@ package com.qducks.superducksystem.crate;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.gui.DuckGui;
+import com.qducks.superducksystem.gui.GuiButton;
 import com.qducks.superducksystem.gui.GuiItems;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
@@ -20,10 +21,14 @@ public final class KeyMenu {
 
     private final SuperDuckSystem plugin;
     private final KeyService service;
+    private final CrateService crates;
+    private final CrateMenu crateMenu;
 
-    public KeyMenu(SuperDuckSystem plugin, KeyService service) {
+    public KeyMenu(SuperDuckSystem plugin, KeyService service, CrateService crates) {
         this.plugin = plugin;
         this.service = service;
+        this.crates = crates;
+        this.crateMenu = new CrateMenu(plugin, service, crates);
     }
 
     public void open(Player player) {
@@ -91,7 +96,16 @@ public final class KeyMenu {
                                 : "-")
                         .replace("%key%", service.keyDisplayName(id)));
             }
-            gui.setDisplay(slot, GuiItems.item(material, name, lore.toArray(String[]::new)));
+
+            String crateId = crateForKey(id);
+            if (crateId != null) {
+                lore.add("");
+                lore.add(amount > 0 ? "<green>Click to open the crate.</green>" : "<dark_gray>Earn a key to open this crate.</dark_gray>");
+                ItemStack icon = GuiItems.item(material, name, lore.toArray(String[]::new));
+                gui.set(slot, new GuiButton(icon, context -> crateMenu.openCrate(context.player(), crateId)));
+            } else {
+                gui.setDisplay(slot, GuiItems.item(material, name, lore.toArray(String[]::new)));
+            }
         }
 
         int progressSlot = config.getInt("key-menu.progress.slot", 49);
@@ -117,6 +131,15 @@ public final class KeyMenu {
             }
             gui.setDisplay(progressSlot, GuiItems.item(progressMaterial, progressName, lore.toArray(String[]::new)));
         }
+    }
+
+    private String crateForKey(String keyId) {
+        for (String crateId : crates.configuredCrates()) {
+            if (crates.keyId(crateId).equalsIgnoreCase(keyId)) {
+                return crateId;
+            }
+        }
+        return null;
     }
 
     private void fill(DuckGui gui, FileConfiguration config) {
