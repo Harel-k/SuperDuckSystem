@@ -18,6 +18,10 @@ commands:
     usage: /balance [player]
     aliases: [bal, money]
     permission: superduck.balance
+  baltop:
+    description: View the richest players
+    usage: /baltop
+    permission: superduck.baltop
   ducks:
     description: View your Ducks currency
     usage: /ducks [player]
@@ -42,6 +46,9 @@ permissions:
   superduck.balance.others:
     description: View other players' balances
     default: op
+  superduck.baltop:
+    description: View the balance leaderboard
+    default: true
   superduck.ducks:
     description: View your own Ducks
     default: true

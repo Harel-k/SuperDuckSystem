@@ -2,6 +2,7 @@ package com.qducks.superducksystem.economy;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.command.BalanceCommand;
+import com.qducks.superducksystem.command.BalanceTopCommand;
 import com.qducks.superducksystem.command.DucksCommand;
 import com.qducks.superducksystem.command.EcoCommand;
 import com.qducks.superducksystem.command.PayCommand;
@@ -32,6 +33,7 @@ public final class EconomyModule implements SuperDuckModule {
         register("ducks", ducks, ducks);
         register("pay", pay, pay);
         register("eco", eco, eco);
+        register("baltop", new BalanceTopCommand(plugin), null);
         plugin.getLogger().info("Economy module enabled.");
     }
 
@@ -46,6 +48,8 @@ public final class EconomyModule implements SuperDuckModule {
             throw new IllegalStateException("Command /" + name + " is missing from plugin.yml");
         }
         command.setExecutor(executor);
-        command.setTabCompleter(completer);
+        if (completer != null) {
+            command.setTabCompleter(completer);
+        }
     }
 }

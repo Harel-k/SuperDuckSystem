@@ -7,6 +7,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -62,7 +64,12 @@ public final class EconomyService {
     }
 
     public CompletableFuture<BigDecimal> add(UUID uuid, CurrencyType currency, BigDecimal requested, TransactionType type, UUID actor) {
-        BigDecimal amount = requirePositive(currency, requested);
+        final BigDecimal amount;
+        try {
+            amount = requirePositive(currency, requested);
+        } catch (IllegalArgumentException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
         return plugin.database().submit(connection -> {
             BigDecimal current = readOrCreate(connection, uuid, currency);
             BigDecimal updated = current.add(amount);
@@ -74,7 +81,12 @@ public final class EconomyService {
     }
 
     public CompletableFuture<BigDecimal> take(UUID uuid, CurrencyType currency, BigDecimal requested, TransactionType type, UUID actor) {
-        BigDecimal amount = requirePositive(currency, requested);
+        final BigDecimal amount;
+        try {
+            amount = requirePositive(currency, requested);
+        } catch (IllegalArgumentException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
         return plugin.database().submit(connection -> {
             BigDecimal current = readOrCreate(connection, uuid, currency);
             if (current.compareTo(amount) < 0) {
@@ -92,7 +104,12 @@ public final class EconomyService {
         if (from.equals(to)) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Cannot transfer to yourself"));
         }
-        BigDecimal amount = requirePositive(currency, requested);
+        final BigDecimal amount;
+        try {
+            amount = requirePositive(currency, requested);
+        } catch (IllegalArgumentException exception) {
+            return CompletableFuture.failedFuture(exception);
+        }
         return plugin.database().submit(connection -> {
             boolean oldAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
@@ -117,6 +134,31 @@ public final class EconomyService {
             } finally {
                 connection.setAutoCommit(oldAutoCommit);
             }
+        });
+    }
+
+    public CompletableFuture<List<LeaderboardEntry>> topBalances(CurrencyType currency, int requestedLimit) {
+        int limit = Math.max(1, Math.min(requestedLimit, 100));
+        return plugin.database().submit(connection -> {
+            List<LeaderboardEntry> entries = new ArrayList<>();
+            String sql = "SELECT b.uuid, p.username, b.amount FROM balances b "
+                    + "LEFT JOIN players p ON p.uuid=b.uuid WHERE b.currency=? "
+                    + "ORDER BY CAST(b.amount AS REAL) DESC LIMIT ?";
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, currency.name());
+                statement.setInt(2, limit);
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        UUID uuid = UUID.fromString(result.getString("uuid"));
+                        String username = result.getString("username");
+                        if (username == null) {
+                            username = uuid.toString();
+                        }
+                        entries.add(new LeaderboardEntry(uuid, username, new BigDecimal(result.getString("amount"))));
+                    }
+                }
+            }
+            return entries;
         });
     }
 
@@ -170,6 +212,9 @@ public final class EconomyService {
     }
 
     private void record(Connection connection, TransactionType type, CurrencyType currency, UUID actor, UUID target, BigDecimal amount) throws SQLException {
+        if (!plugin.configs().economy().getBoolean("transactions.keep-history", true)) {
+            return;
+        }
         try (PreparedStatement statement = connection.prepareStatement(
                 "INSERT INTO transactions(id, created_at, type, currency, actor_uuid, target_uuid, amount) VALUES(?, ?, ?, ?, ?, ?, ?)")) {
             statement.setString(1, UUID.randomUUID().toString());
@@ -186,6 +231,8 @@ public final class EconomyService {
     private record AccountKey(UUID uuid, CurrencyType currency) {}
 
     public record TransferResult(BigDecimal senderBalance, BigDecimal receiverBalance, BigDecimal amount) {}
+
+    public record LeaderboardEntry(UUID uuid, String username, BigDecimal balance) {}
 
     public static final class InsufficientFundsException extends RuntimeException {
         private final BigDecimal balance;

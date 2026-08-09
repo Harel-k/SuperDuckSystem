@@ -30,5 +30,8 @@ payments:
   maximum: "1000000000000"
   allow-self-pay: false
 
+leaderboards:
+  balance-size: 10
+
 transactions:
   keep-history: true
