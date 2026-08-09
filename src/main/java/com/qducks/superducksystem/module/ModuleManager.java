@@ -45,6 +45,19 @@ public final class ModuleManager {
         return Collections.unmodifiableMap(modules);
     }
 
+    public void reload() {
+        for (SuperDuckModule module : modules.values()) {
+            if (!plugin.getConfig().getBoolean("modules." + module.id().toLowerCase(), false)) {
+                continue;
+            }
+            try {
+                module.reload();
+            } catch (Exception exception) {
+                plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage());
+            }
+        }
+    }
+
     public void shutdown() {
         for (SuperDuckModule module : modules.values()) {
             try {
