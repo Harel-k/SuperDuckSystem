@@ -12,10 +12,12 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 
 public final class AuctionCommand implements CommandExecutor {
+    private final SuperDuckSystem plugin;
     private final AuctionMenu menu;
     private final MessageService messages;
 
     public AuctionCommand(SuperDuckSystem plugin, AuctionService service) {
+        this.plugin = plugin;
         this.menu = new AuctionMenu(plugin, service);
         this.messages = new MessageService(plugin);
     }
@@ -26,28 +28,27 @@ public final class AuctionCommand implements CommandExecutor {
             messages.send(sender, "errors.players-only", "<red>This command can only be used by players.</red>");
             return true;
         }
-
+        if (plugin.state().maintenance("auctions")) {
+            player.sendRichMessage("<red>The Auction House is temporarily in maintenance mode.</red>");
+            return true;
+        }
         if (args.length == 0) {
             menu.open(player, "", AuctionSort.NEWEST, 0);
             return true;
         }
-
         if (args[0].equalsIgnoreCase("sell")) {
             if (args.length != 2) {
                 messages.send(player, "auction.sell-usage", "<red>Usage: /ah sell <price></red>");
                 return true;
             }
             BigDecimal price;
-            try {
-                price = new BigDecimal(args[1].replace(",", ""));
-            } catch (NumberFormatException exception) {
-                messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>");
-                return true;
+            try { price = new BigDecimal(args[1].replace(",", "")); }
+            catch (NumberFormatException exception) {
+                messages.send(player, "errors.invalid-amount", "<red>That is not a valid amount.</red>"); return true;
             }
             menu.startListing(player, price);
             return true;
         }
-
         String search = String.join(" ", Arrays.asList(args)).trim();
         menu.open(player, search, AuctionSort.NEWEST, 0);
         return true;
