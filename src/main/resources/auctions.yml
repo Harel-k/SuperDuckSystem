@@ -5,9 +5,62 @@ listing:
   minimum-price: "1"
   maximum-price: "1000000000000"
   duration-minutes: 1440
+  default-price-input: "100"
+  inventory-picker:
+    title: "<gold><bold>Select Auction Item</bold></gold>"
+    rows: 6
+    filler:
+      enabled: true
+      material: BLACK_STAINED_GLASS_PANE
+      name: " "
+    content-slots:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      - 10
+      - 11
+      - 12
+      - 13
+      - 14
+      - 15
+      - 16
+      - 17
+      - 18
+      - 19
+      - 20
+      - 21
+      - 22
+      - 23
+      - 24
+      - 25
+      - 26
+      - 27
+      - 28
+      - 29
+      - 30
+      - 31
+      - 32
+      - 33
+      - 34
+      - 35
+    empty:
+      slot: 22
+      material: CHEST
+      name: "<gray>Your inventory has no items to list.</gray>"
+    back:
+      slot: 49
+      material: BARRIER
+      name: "<red>Back to My Auctions</red>"
 
 limits:
-  # Higher values can be granted with superduck.auction.slots.<number>
+  # Rank values are assigned from config.yml. Higher numeric permission nodes still work.
   default-slots: 3
 
 menu:
@@ -76,9 +129,9 @@ menu:
   my-items:
     slot: 47
     material: CHEST
-    name: "<gold><bold>My Items</bold></gold>"
+    name: "<gold><bold>My Auctions</bold></gold>"
     lore:
-      - "<gray>View your active and returned auctions.</gray>"
+      - "<gray>View listings, claims and free listing slots.</gray>"
   refresh:
     slot: 49
     material: SUNFLOWER
@@ -116,7 +169,7 @@ confirmation:
   cancel-name: "<red><bold>Cancel</bold></red>"
 
 my-items:
-  title: "<gold><bold>My Auctions</bold></gold>"
+  title: "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray>"
   rows: 6
   page-size: 36
   filler:
@@ -160,6 +213,12 @@ my-items:
     - 33
     - 34
     - 35
+  empty-slot:
+    material: LIME_STAINED_GLASS_PANE
+    name: "<green><bold>+ List Item</bold></green>"
+    lore:
+      - "<gray>Used slots:</gray> <white>%used%/%limit%</white>"
+      - "<yellow>Click to choose an item from your inventory.</yellow>"
   back:
     slot: 49
     material: BARRIER
