@@ -5,5 +5,9 @@ public interface SuperDuckModule {
 
     void enable();
 
+    default void reload() {
+        // Most modules read their config live and need no special refresh step.
+    }
+
     void disable();
 }
