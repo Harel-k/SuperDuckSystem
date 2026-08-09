@@ -5,11 +5,26 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 public final class GuiManager implements Listener {
+    private static final Set<InventoryAction> SAFE_EDIT_ACTIONS = EnumSet.of(
+            InventoryAction.PICKUP_ALL,
+            InventoryAction.PICKUP_HALF,
+            InventoryAction.PICKUP_ONE,
+            InventoryAction.PICKUP_SOME,
+            InventoryAction.PLACE_ALL,
+            InventoryAction.PLACE_ONE,
+            InventoryAction.PLACE_SOME,
+            InventoryAction.SWAP_WITH_CURSOR
+    );
+
     private final SuperDuckSystem plugin;
 
     public GuiManager(SuperDuckSystem plugin) {
@@ -22,18 +37,32 @@ public final class GuiManager implements Listener {
             return;
         }
 
-        // Cancel every click while one of our menus is open. This also blocks shift-click,
-        // number-key swaps and other inventory tricks from inserting items into protected GUI slots.
+        int rawSlot = event.getRawSlot();
+        int topSize = event.getView().getTopInventory().getSize();
+
+        // Editable GUIs are opt-in and only permit ordinary cursor pickup/place actions in explicitly
+        // whitelisted top slots. Shift-clicks, hotbar swaps, drops and other shortcuts stay blocked.
+        if (gui instanceof EditableDuckGui editable
+                && rawSlot >= 0
+                && rawSlot < topSize
+                && editable.isEditable(rawSlot)
+                && SAFE_EDIT_ACTIONS.contains(event.getAction())) {
+            event.setCancelled(false);
+            return;
+        }
+
+        // All regular DuckGui slots are protected. This also blocks shift-clicks and number-key
+        // swaps from the player's inventory while one of our menus is open.
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player player)) {
             return;
         }
-        if (event.getRawSlot() < 0 || event.getRawSlot() >= event.getView().getTopInventory().getSize()) {
+        if (rawSlot < 0 || rawSlot >= topSize) {
             return;
         }
 
-        GuiButton button = gui.button(event.getRawSlot());
+        GuiButton button = gui.button(rawSlot);
         if (button == null) {
             return;
         }
@@ -52,6 +81,8 @@ public final class GuiManager implements Listener {
         }
         int topSize = event.getView().getTopInventory().getSize();
         if (event.getRawSlots().stream().anyMatch(slot -> slot < topSize)) {
+            // Deliberately blocked even for EditableDuckGui. Manual cursor placement is predictable;
+            // drag distribution is much easier to exploit or mishandle in escrow-style interfaces.
             event.setCancelled(true);
         }
     }
