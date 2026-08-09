@@ -35,6 +35,10 @@ commands:
     usage: /eco <give|take|set|reset> <player> [amount] [money|ducks]
     aliases: [economy]
     permission: superduck.admin.economy
+  settings:
+    description: Open your player settings
+    usage: /settings
+    permission: superduck.settings
 
 permissions:
   superduck.command:
@@ -57,6 +61,9 @@ permissions:
     default: op
   superduck.pay:
     description: Pay another player
+    default: true
+  superduck.settings:
+    description: Open your player settings
     default: true
   superduck.admin.economy:
     description: Manage player money and Ducks
