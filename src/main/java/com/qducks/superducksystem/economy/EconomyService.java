@@ -95,8 +95,11 @@ public final class EconomyService {
                 publishTransfer(from, to, currency, result);
                 return result;
             } catch (Exception exception) {
-                connection.rollback(); throw exception;
-            } finally { connection.setAutoCommit(oldAutoCommit); }
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(oldAutoCommit);
+            }
         });
     }
 
@@ -144,7 +147,9 @@ public final class EconomyService {
         cache.put(new AccountKey(to, currency), result.receiverBalance());
     }
 
-    public void publishBalance(UUID account, CurrencyType currency, BigDecimal balance) { cache.put(new AccountKey(account, currency), balance); }
+    public void publishBalance(UUID account, CurrencyType currency, BigDecimal balance) {
+        cache.put(new AccountKey(account, currency), balance);
+    }
 
     public CompletableFuture<List<LeaderboardEntry>> topBalances(CurrencyType currency, int requestedLimit) {
         int limit = Math.max(1, Math.min(requestedLimit, 100));
@@ -152,7 +157,8 @@ public final class EconomyService {
             List<LeaderboardEntry> entries = new ArrayList<>();
             String sql = "SELECT b.uuid, p.username, b.amount FROM balances b LEFT JOIN players p ON p.uuid=b.uuid WHERE b.currency=? ORDER BY CAST(b.amount AS REAL) DESC LIMIT ?";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, currency.name()); statement.setInt(2, limit);
+                statement.setString(1, currency.name());
+                statement.setInt(2, limit);
                 try (ResultSet result = statement.executeQuery()) {
                     while (result.next()) {
                         UUID uuid = UUID.fromString(result.getString("uuid"));
@@ -166,7 +172,9 @@ public final class EconomyService {
         });
     }
 
-    public void unload(UUID uuid) { cache.keySet().removeIf(key -> key.uuid().equals(uuid)); }
+    public void unload(UUID uuid) {
+        cache.keySet().removeIf(key -> key.uuid().equals(uuid));
+    }
 
     public BigDecimal startingBalance(CurrencyType currency) {
         String raw = plugin.configs().economy().getString("currencies." + currency.configKey() + ".starting-balance", "0");
@@ -174,7 +182,8 @@ public final class EconomyService {
     }
 
     private void ensureMutationAllowed(TransactionType type) {
-        if (!plugin.state().readOnly()) return;
+        boolean locked = plugin.state().readOnly() || plugin.state().maintenance("economy");
+        if (!locked) return;
         if (type == TransactionType.ADMIN_GIVE || type == TransactionType.ADMIN_TAKE
                 || type == TransactionType.ADMIN_SET || type == TransactionType.ADMIN_RESET) return;
         throw new ReadOnlyException();
@@ -188,10 +197,14 @@ public final class EconomyService {
 
     private BigDecimal readOrCreate(Connection connection, UUID uuid, CurrencyType currency) throws SQLException {
         try (PreparedStatement insert = connection.prepareStatement("INSERT OR IGNORE INTO balances(uuid, currency, amount) VALUES(?, ?, ?)")) {
-            insert.setString(1, uuid.toString()); insert.setString(2, currency.name()); insert.setString(3, startingBalance(currency).toPlainString()); insert.executeUpdate();
+            insert.setString(1, uuid.toString());
+            insert.setString(2, currency.name());
+            insert.setString(3, startingBalance(currency).toPlainString());
+            insert.executeUpdate();
         }
         try (PreparedStatement query = connection.prepareStatement("SELECT amount FROM balances WHERE uuid=? AND currency=?")) {
-            query.setString(1, uuid.toString()); query.setString(2, currency.name());
+            query.setString(1, uuid.toString());
+            query.setString(2, currency.name());
             try (ResultSet result = query.executeQuery()) {
                 if (!result.next()) throw new SQLException("Balance row disappeared for " + uuid);
                 return new BigDecimal(result.getString("amount"));
@@ -201,16 +214,24 @@ public final class EconomyService {
 
     private void writeBalance(Connection connection, UUID uuid, CurrencyType currency, BigDecimal amount) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("INSERT INTO balances(uuid, currency, amount) VALUES(?, ?, ?) ON CONFLICT(uuid, currency) DO UPDATE SET amount=excluded.amount")) {
-            statement.setString(1, uuid.toString()); statement.setString(2, currency.name()); statement.setString(3, amount.toPlainString()); statement.executeUpdate();
+            statement.setString(1, uuid.toString());
+            statement.setString(2, currency.name());
+            statement.setString(3, amount.toPlainString());
+            statement.executeUpdate();
         }
     }
 
     private void record(Connection connection, TransactionType type, CurrencyType currency, UUID actor, UUID target, BigDecimal amount) throws SQLException {
         if (!plugin.configs().economy().getBoolean("transactions.keep-history", true)) return;
         try (PreparedStatement statement = connection.prepareStatement("INSERT INTO transactions(id, created_at, type, currency, actor_uuid, target_uuid, amount) VALUES(?, ?, ?, ?, ?, ?, ?)")) {
-            statement.setString(1, UUID.randomUUID().toString()); statement.setLong(2, System.currentTimeMillis()); statement.setString(3, type.name());
-            statement.setString(4, currency.name()); statement.setString(5, actor == null ? null : actor.toString());
-            statement.setString(6, target == null ? null : target.toString()); statement.setString(7, amount.toPlainString()); statement.executeUpdate();
+            statement.setString(1, UUID.randomUUID().toString());
+            statement.setLong(2, System.currentTimeMillis());
+            statement.setString(3, type.name());
+            statement.setString(4, currency.name());
+            statement.setString(5, actor == null ? null : actor.toString());
+            statement.setString(6, target == null ? null : target.toString());
+            statement.setString(7, amount.toPlainString());
+            statement.executeUpdate();
         }
     }
 
@@ -221,12 +242,16 @@ public final class EconomyService {
     public static final class InsufficientFundsException extends RuntimeException {
         private final BigDecimal balance;
         private final BigDecimal requested;
-        public InsufficientFundsException(BigDecimal balance, BigDecimal requested) { super("Insufficient funds"); this.balance = balance; this.requested = requested; }
+        public InsufficientFundsException(BigDecimal balance, BigDecimal requested) {
+            super("Insufficient funds");
+            this.balance = balance;
+            this.requested = requested;
+        }
         public BigDecimal balance() { return balance; }
         public BigDecimal requested() { return requested; }
     }
 
     public static final class ReadOnlyException extends RuntimeException {
-        public ReadOnlyException() { super("SuperDuckSystem is currently in read-only mode"); }
+        public ReadOnlyException() { super("SuperDuckSystem economy is currently locked"); }
     }
 }
