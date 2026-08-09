@@ -3,6 +3,7 @@ package com.qducks.superducksystem.module;
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.EconomyModule;
 import com.qducks.superducksystem.settings.SettingsModule;
+import com.qducks.superducksystem.shop.ShopModule;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -19,6 +20,7 @@ public final class ModuleManager {
     public void loadConfiguredModules() {
         register(new EconomyModule(plugin));
         register(new SettingsModule(plugin));
+        register(new ShopModule(plugin));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
