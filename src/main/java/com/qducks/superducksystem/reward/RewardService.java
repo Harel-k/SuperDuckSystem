@@ -37,17 +37,8 @@ public final class RewardService {
         if (!starting.compareAndSet(false, true)) return;
         plugin.database().submit(connection -> {
             try (var statement = connection.createStatement()) {
-                statement.executeUpdate("CREATE TABLE IF NOT EXISTS daily_rewards ("
-                        + "uuid TEXT PRIMARY KEY NOT NULL,"
-                        + "last_claim INTEGER NOT NULL DEFAULT 0,"
-                        + "streak INTEGER NOT NULL DEFAULT 0"
-                        + ")");
-                statement.executeUpdate("CREATE TABLE IF NOT EXISTS playtime_reward_claims ("
-                        + "uuid TEXT NOT NULL,"
-                        + "reward_id TEXT NOT NULL,"
-                        + "claimed_at INTEGER NOT NULL,"
-                        + "PRIMARY KEY(uuid, reward_id)"
-                        + ")");
+                statement.executeUpdate("CREATE TABLE IF NOT EXISTS daily_rewards (uuid TEXT PRIMARY KEY NOT NULL,last_claim INTEGER NOT NULL DEFAULT 0,streak INTEGER NOT NULL DEFAULT 0)");
+                statement.executeUpdate("CREATE TABLE IF NOT EXISTS playtime_reward_claims (uuid TEXT NOT NULL,reward_id TEXT NOT NULL,claimed_at INTEGER NOT NULL,PRIMARY KEY(uuid, reward_id))");
             }
             return null;
         }).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
@@ -61,9 +52,7 @@ public final class RewardService {
         }));
     }
 
-    public boolean ready() {
-        return ready;
-    }
+    public boolean ready() { return ready; }
 
     public CompletableFuture<DailyStatus> dailyStatus(UUID uuid) {
         if (!ready) return CompletableFuture.failedFuture(new IllegalStateException("Rewards are starting"));
@@ -83,9 +72,7 @@ public final class RewardService {
     }
 
     public CompletableFuture<DailyClaim> claimDaily(Player player) {
-        if (!plugin.configs().rewards().getBoolean("daily.enabled", true)) {
-            return CompletableFuture.failedFuture(new IllegalStateException("Daily rewards are disabled"));
-        }
+        if (!plugin.configs().rewards().getBoolean("daily.enabled", true)) return CompletableFuture.failedFuture(new IllegalStateException("Daily rewards are disabled"));
         if (!ready) return CompletableFuture.failedFuture(new IllegalStateException("Rewards are starting"));
         UUID uuid = player.getUniqueId();
         long now = System.currentTimeMillis();
@@ -110,22 +97,14 @@ public final class RewardService {
                 long remaining = Math.max(0L, previousClaim + cooldown - now);
                 if (previousClaim > 0 && remaining > 0) throw new DailyCooldownException(remaining);
                 int streak = previousClaim > 0 && now - previousClaim <= reset ? previousStreak + 1 : 1;
-                try (PreparedStatement update = connection.prepareStatement(
-                        "INSERT INTO daily_rewards(uuid,last_claim,streak) VALUES(?,?,?) "
-                                + "ON CONFLICT(uuid) DO UPDATE SET last_claim=excluded.last_claim,streak=excluded.streak")) {
-                    update.setString(1, uuid.toString());
-                    update.setLong(2, now);
-                    update.setInt(3, streak);
-                    update.executeUpdate();
+                try (PreparedStatement update = connection.prepareStatement("INSERT INTO daily_rewards(uuid,last_claim,streak) VALUES(?,?,?) ON CONFLICT(uuid) DO UPDATE SET last_claim=excluded.last_claim,streak=excluded.streak")) {
+                    update.setString(1, uuid.toString()); update.setLong(2, now); update.setInt(3, streak); update.executeUpdate();
                 }
                 connection.commit();
                 return new ReservedDaily(previousClaim, previousStreak, streak, now);
             } catch (Exception exception) {
-                connection.rollback();
-                throw exception;
-            } finally {
-                connection.setAutoCommit(old);
-            }
+                connection.rollback(); throw exception;
+            } finally { connection.setAutoCommit(old); }
         }).thenCompose(reserved -> {
             List<Map<?, ?>> definitions = new ArrayList<>(plugin.configs().rewards().getMapList("daily.base-rewards"));
             definitions.addAll(plugin.configs().rewards().getMapList("daily.streak-bonuses." + reserved.streak));
@@ -142,9 +121,7 @@ public final class RewardService {
             List<String> claimed = new ArrayList<>();
             try (PreparedStatement statement = connection.prepareStatement("SELECT reward_id FROM playtime_reward_claims WHERE uuid=?")) {
                 statement.setString(1, uuid.toString());
-                try (ResultSet result = statement.executeQuery()) {
-                    while (result.next()) claimed.add(result.getString("reward_id"));
-                }
+                try (ResultSet result = statement.executeQuery()) { while (result.next()) claimed.add(result.getString("reward_id")); }
             }
             List<PlaytimeReward> rewards = new ArrayList<>();
             var section = plugin.configs().rewards().getConfigurationSection("playtime.milestones");
@@ -162,32 +139,23 @@ public final class RewardService {
     public CompletableFuture<List<String>> claimPlaytime(Player player, String rewardId) {
         UUID uuid = player.getUniqueId();
         String base = "playtime.milestones." + rewardId;
-        if (!plugin.configs().rewards().isConfigurationSection(base)) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Unknown playtime reward"));
-        }
+        if (!plugin.configs().rewards().isConfigurationSection(base)) return CompletableFuture.failedFuture(new IllegalArgumentException("Unknown playtime reward"));
         long required = Math.max(1L, plugin.configs().rewards().getLong(base + ".minutes", 1L)) * 60L;
         return plugin.stats().snapshot(uuid).thenCompose(stats -> {
             if (stats.playtimeSeconds() < required) return CompletableFuture.failedFuture(new NotEnoughPlaytimeException(required - stats.playtimeSeconds()));
             long now = System.currentTimeMillis();
             return plugin.database().submit(connection -> {
-                try (PreparedStatement insert = connection.prepareStatement(
-                        "INSERT INTO playtime_reward_claims(uuid,reward_id,claimed_at) VALUES(?,?,?)")) {
-                    insert.setString(1, uuid.toString());
-                    insert.setString(2, rewardId);
-                    insert.setLong(3, now);
-                    insert.executeUpdate();
+                try (PreparedStatement insert = connection.prepareStatement("INSERT INTO playtime_reward_claims(uuid,reward_id,claimed_at) VALUES(?,?,?)")) {
+                    insert.setString(1, uuid.toString()); insert.setString(2, rewardId); insert.setLong(3, now); insert.executeUpdate();
                 } catch (java.sql.SQLException exception) {
-                    if (exception.getMessage() != null && exception.getMessage().toLowerCase(Locale.ROOT).contains("unique")) {
-                        throw new AlreadyClaimedException();
-                    }
+                    if (exception.getMessage() != null && exception.getMessage().toLowerCase(Locale.ROOT).contains("unique")) throw new AlreadyClaimedException();
                     throw exception;
                 }
                 return null;
             }).thenCompose(ignored -> grantAll(player, plugin.configs().rewards().getMapList(base + ".rewards"))
-                    .handle((descriptions, error) -> {
-                        if (error == null) return CompletableFuture.completedFuture(descriptions);
-                        return deletePlaytimeClaim(uuid, rewardId).thenCompose(x -> CompletableFuture.<List<String>>failedFuture(unwrap(error)));
-                    }).thenCompose(future -> future));
+                    .handle((descriptions, error) -> error == null ? CompletableFuture.completedFuture(descriptions)
+                            : deletePlaytimeClaim(uuid, rewardId).thenCompose(x -> CompletableFuture.<List<String>>failedFuture(unwrap(error))))
+                    .thenCompose(future -> future));
         });
     }
 
@@ -195,15 +163,14 @@ public final class RewardService {
         CompletableFuture<List<String>> chain = CompletableFuture.completedFuture(new ArrayList<>());
         for (Map<?, ?> definition : definitions) {
             chain = chain.thenCompose(descriptions -> grantOne(player, definition).thenApply(description -> {
-                descriptions.add(description);
-                return descriptions;
+                descriptions.add(description); return descriptions;
             }));
         }
         return chain.thenApply(List::copyOf);
     }
 
     private CompletableFuture<String> grantOne(Player player, Map<?, ?> definition) {
-        String type = String.valueOf(definition.getOrDefault("type", "")).trim().toUpperCase(Locale.ROOT);
+        String type = string(definition, "type", "").toUpperCase(Locale.ROOT);
         return switch (type) {
             case "MONEY" -> {
                 BigDecimal amount = positiveDecimal(definition.get("amount"));
@@ -216,19 +183,18 @@ public final class RewardService {
                         .thenApply(ignored -> plugin.economy().formatter().format(CurrencyType.DUCKS, amount));
             }
             case "KEY" -> {
-                String key = String.valueOf(definition.getOrDefault("key", "")).trim().toLowerCase(Locale.ROOT);
+                String key = string(definition, "key", "").toLowerCase(Locale.ROOT);
                 int amount = positiveInt(definition.get("amount"), 1);
-                yield plugin.keys().giveKeys(player.getUniqueId(), key, amount)
-                        .thenApply(ignored -> amount + "x " + plugin.keys().keyDisplayName(key));
+                yield plugin.keys().giveKeys(player.getUniqueId(), key, amount).thenApply(ignored -> amount + "x " + plugin.keys().keyDisplayName(key));
             }
             case "ITEM" -> {
-                Material material = Material.matchMaterial(String.valueOf(definition.getOrDefault("material", "")));
+                Material material = Material.matchMaterial(string(definition, "material", ""));
                 if (material == null || material.isAir() || !material.isItem()) yield CompletableFuture.failedFuture(new IllegalArgumentException("Invalid reward material"));
                 int amount = positiveInt(definition.get("amount"), 1);
                 yield giveItem(player, new ItemStack(material), amount).thenApply(ignored -> amount + "x " + pretty(material.name()));
             }
             case "CUSTOM_ITEM" -> {
-                String id = String.valueOf(definition.getOrDefault("id", definition.getOrDefault("item", ""))).trim();
+                String id = string(definition, "id", string(definition, "item", ""));
                 int amount = positiveInt(definition.get("amount"), 1);
                 ItemStack item = plugin.customItems().createConfigured(id, Math.min(amount, 64));
                 if (item == null) yield CompletableFuture.failedFuture(new IllegalArgumentException("Invalid custom reward item: " + id));
@@ -252,9 +218,7 @@ public final class RewardService {
                     left -= stack.getAmount();
                 }
                 future.complete(null);
-            } catch (Throwable error) {
-                future.completeExceptionally(error);
-            }
+            } catch (Throwable error) { future.completeExceptionally(error); }
         });
         return future;
     }
@@ -263,18 +227,11 @@ public final class RewardService {
         return plugin.database().submit(connection -> {
             if (reserved.previousClaim == 0L) {
                 try (PreparedStatement delete = connection.prepareStatement("DELETE FROM daily_rewards WHERE uuid=? AND last_claim=?")) {
-                    delete.setString(1, uuid.toString());
-                    delete.setLong(2, reserved.claimedAt);
-                    delete.executeUpdate();
+                    delete.setString(1, uuid.toString()); delete.setLong(2, reserved.claimedAt); delete.executeUpdate();
                 }
             } else {
-                try (PreparedStatement update = connection.prepareStatement(
-                        "UPDATE daily_rewards SET last_claim=?,streak=? WHERE uuid=? AND last_claim=?")) {
-                    update.setLong(1, reserved.previousClaim);
-                    update.setInt(2, reserved.previousStreak);
-                    update.setString(3, uuid.toString());
-                    update.setLong(4, reserved.claimedAt);
-                    update.executeUpdate();
+                try (PreparedStatement update = connection.prepareStatement("UPDATE daily_rewards SET last_claim=?,streak=? WHERE uuid=? AND last_claim=?")) {
+                    update.setLong(1, reserved.previousClaim); update.setInt(2, reserved.previousStreak); update.setString(3, uuid.toString()); update.setLong(4, reserved.claimedAt); update.executeUpdate();
                 }
             }
             return null;
@@ -284,12 +241,15 @@ public final class RewardService {
     private CompletableFuture<Void> deletePlaytimeClaim(UUID uuid, String id) {
         return plugin.database().submit(connection -> {
             try (PreparedStatement delete = connection.prepareStatement("DELETE FROM playtime_reward_claims WHERE uuid=? AND reward_id=?")) {
-                delete.setString(1, uuid.toString());
-                delete.setString(2, id);
-                delete.executeUpdate();
+                delete.setString(1, uuid.toString()); delete.setString(2, id); delete.executeUpdate();
             }
             return null;
         });
+    }
+
+    private String string(Map<?, ?> map, String key, String fallback) {
+        Object value = map.get(key);
+        return value == null ? fallback : String.valueOf(value).trim();
     }
 
     private BigDecimal positiveDecimal(Object value) {
@@ -300,8 +260,7 @@ public final class RewardService {
 
     private int positiveInt(Object value, int fallback) {
         int amount;
-        try { amount = Integer.parseInt(String.valueOf(value)); }
-        catch (Exception ignored) { amount = fallback; }
+        try { amount = Integer.parseInt(String.valueOf(value)); } catch (Exception ignored) { amount = fallback; }
         if (amount <= 0) throw new IllegalArgumentException("Reward amount must be positive");
         return amount;
     }
