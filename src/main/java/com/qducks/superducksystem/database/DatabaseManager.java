@@ -1,6 +1,8 @@
 package com.qducks.superducksystem.database;
 
 import com.qducks.superducksystem.SuperDuckSystem;
+import org.bukkit.Bukkit;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.sql.Connection;
@@ -10,6 +12,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -21,6 +25,7 @@ public final class DatabaseManager {
     private final ExecutorService executor;
     private File databaseFile;
     private volatile boolean ready;
+    private BukkitTask automaticBackupTask;
 
     public DatabaseManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -46,6 +51,7 @@ public final class DatabaseManager {
                     ready = true;
                     plugin.getLogger().info("SQLite database ready.");
                 }
+                Bukkit.getScheduler().runTask(plugin, this::reloadBackupSchedule);
             } catch (Exception exception) {
                 plugin.getLogger().severe("Failed to initialize SQLite: " + exception.getMessage());
             }
@@ -53,7 +59,6 @@ public final class DatabaseManager {
     }
 
     public boolean isReady() { return ready; }
-
     public File databaseFile() { return databaseFile; }
 
     public <T> CompletableFuture<T> submit(DatabaseOperation<T> operation) {
@@ -74,7 +79,7 @@ public final class DatabaseManager {
 
     public CompletableFuture<File> backup() {
         return submit(connection -> {
-            File directory = new File(plugin.getDataFolder(), "backups");
+            File directory = backupDirectory();
             if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Could not create backup directory");
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
             File destination = new File(directory, "SuperDuckSystem-" + timestamp + ".db");
@@ -85,8 +90,30 @@ public final class DatabaseManager {
                 statement.execute("PRAGMA wal_checkpoint(FULL)");
                 statement.execute("VACUUM INTO '" + path + "'");
             }
+            pruneBackups(plugin.getConfig().getInt("database.backups.keep", 12));
             return destination;
         });
+    }
+
+    public void reloadBackupSchedule() {
+        if (automaticBackupTask != null) {
+            automaticBackupTask.cancel();
+            automaticBackupTask = null;
+        }
+        if (!ready || !plugin.getConfig().getBoolean("database.backups.enabled", true)) {
+            return;
+        }
+        long hours = Math.max(1L, Math.min(168L, plugin.getConfig().getLong("database.backups.interval-hours", 6L)));
+        long periodTicks = hours * 60L * 60L * 20L;
+        automaticBackupTask = Bukkit.getScheduler().runTaskTimer(plugin, () ->
+                backup().whenComplete((file, error) -> {
+                    if (error != null) {
+                        plugin.getLogger().severe("Automatic SuperDuck backup failed: " + rootMessage(error));
+                    } else {
+                        plugin.getLogger().info("Automatic SuperDuck backup created: " + file.getName());
+                    }
+                }), periodTicks, periodTicks);
+        plugin.getLogger().info("Automatic database backups enabled every " + hours + " hour(s).");
     }
 
     public void upsertPlayer(UUID uuid, String username, long now) {
@@ -94,8 +121,11 @@ public final class DatabaseManager {
             String sql = "INSERT INTO players(uuid, username, first_join, last_seen) VALUES(?, ?, ?, ?) "
                     + "ON CONFLICT(uuid) DO UPDATE SET username=excluded.username, last_seen=excluded.last_seen";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, uuid.toString()); statement.setString(2, username);
-                statement.setLong(3, now); statement.setLong(4, now); statement.executeUpdate();
+                statement.setString(1, uuid.toString());
+                statement.setString(2, username);
+                statement.setLong(3, now);
+                statement.setLong(4, now);
+                statement.executeUpdate();
             }
             return null;
         }).exceptionally(error -> {
@@ -142,16 +172,45 @@ public final class DatabaseManager {
         }
     }
 
+    private File backupDirectory() {
+        return new File(plugin.getDataFolder(), "backups");
+    }
+
+    private void pruneBackups(int requestedKeep) {
+        int keep = Math.max(1, Math.min(100, requestedKeep));
+        File[] files = backupDirectory().listFiles((directory, name) -> name.startsWith("SuperDuckSystem-") && name.endsWith(".db"));
+        if (files == null || files.length <= keep) return;
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+        for (int index = keep; index < files.length; index++) {
+            if (!files[index].delete()) {
+                plugin.getLogger().warning("Could not delete old SuperDuck backup " + files[index].getName());
+            }
+        }
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) current = current.getCause();
+        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
+    }
+
     public void close() {
         ready = false;
+        if (automaticBackupTask != null) {
+            automaticBackupTask.cancel();
+            automaticBackupTask = null;
+        }
         executor.shutdown();
         try {
             if (!executor.awaitTermination(5, TimeUnit.SECONDS)) executor.shutdownNow();
         } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt(); executor.shutdownNow();
+            Thread.currentThread().interrupt();
+            executor.shutdownNow();
         }
     }
 
     @FunctionalInterface
-    public interface DatabaseOperation<T> { T execute(Connection connection) throws Exception; }
+    public interface DatabaseOperation<T> {
+        T execute(Connection connection) throws Exception;
+    }
 }
