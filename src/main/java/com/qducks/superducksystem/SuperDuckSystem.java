@@ -13,6 +13,7 @@ import com.qducks.superducksystem.module.ModuleManager;
 import com.qducks.superducksystem.player.PlayerProfileListener;
 import com.qducks.superducksystem.rank.RankPerkListener;
 import com.qducks.superducksystem.rank.RankPerkService;
+import com.qducks.superducksystem.reward.RewardService;
 import com.qducks.superducksystem.settings.SettingsService;
 import com.qducks.superducksystem.stats.StatsService;
 import org.bukkit.command.PluginCommand;
@@ -31,6 +32,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private RankPerkService rankPerkService;
     private StatsService statsService;
     private KeyService keyService;
+    private RewardService rewardService;
 
     @Override
     public void onEnable() {
@@ -47,6 +49,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.signInputService = new VirtualSignInputService(this);
         this.statsService = new StatsService(this);
         this.keyService = new KeyService(this);
+        this.rewardService = new RewardService(this);
 
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
@@ -74,65 +77,23 @@ public final class SuperDuckSystem extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (rankPerkService != null) {
-            rankPerkService.shutdown();
-        }
-        if (moduleManager != null) {
-            moduleManager.shutdown();
-        }
-        if (integrationManager != null) {
-            integrationManager.shutdown();
-        }
-        if (databaseManager != null) {
-            databaseManager.close();
-        }
+        if (rankPerkService != null) rankPerkService.shutdown();
+        if (moduleManager != null) moduleManager.shutdown();
+        if (integrationManager != null) integrationManager.shutdown();
+        if (databaseManager != null) databaseManager.close();
     }
 
-    public ConfigManager configs() {
-        return configManager;
-    }
-
-    public DatabaseManager database() {
-        return databaseManager;
-    }
-
-    public EconomyService economy() {
-        return economyService;
-    }
-
-    public SettingsService settings() {
-        return settingsService;
-    }
-
-    public IntegrationManager integrations() {
-        return integrationManager;
-    }
-
-    public ModuleManager modules() {
-        return moduleManager;
-    }
-
-    public CustomItemService customItems() {
-        return customItemService;
-    }
-
-    public GuiManager guis() {
-        return guiManager;
-    }
-
-    public VirtualSignInputService signInput() {
-        return signInputService;
-    }
-
-    public RankPerkService rankPerks() {
-        return rankPerkService;
-    }
-
-    public StatsService stats() {
-        return statsService;
-    }
-
-    public KeyService keys() {
-        return keyService;
-    }
+    public ConfigManager configs() { return configManager; }
+    public DatabaseManager database() { return databaseManager; }
+    public EconomyService economy() { return economyService; }
+    public SettingsService settings() { return settingsService; }
+    public IntegrationManager integrations() { return integrationManager; }
+    public ModuleManager modules() { return moduleManager; }
+    public CustomItemService customItems() { return customItemService; }
+    public GuiManager guis() { return guiManager; }
+    public VirtualSignInputService signInput() { return signInputService; }
+    public RankPerkService rankPerks() { return rankPerkService; }
+    public StatsService stats() { return statsService; }
+    public KeyService keys() { return keyService; }
+    public RewardService rewards() { return rewardService; }
 }
