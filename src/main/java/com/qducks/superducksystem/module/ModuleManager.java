@@ -28,7 +28,7 @@ public final class ModuleManager {
         register(new ShopModule(plugin));
         register(new AuctionModule(plugin));
         register(new OrderModule(plugin));
-        register(new CrateModule(plugin));
+        register(new CrateModule(plugin, plugin.keys()));
         register(new CustomToolsModule(plugin));
         register(new StatsModule(plugin));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
