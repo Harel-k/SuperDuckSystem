@@ -19,6 +19,10 @@ database:
   type: SQLITE
   file: data.db
   wal: true
+  backups:
+    enabled: true
+    interval-hours: 6
+    keep: 12
 
 integrations:
   placeholderapi: true
