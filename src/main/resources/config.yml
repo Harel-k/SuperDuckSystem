@@ -13,6 +13,7 @@ modules:
   settings: true
   custom-tools: true
   stats: true
+  rewards: true
 
 database:
   type: SQLITE
@@ -25,8 +26,6 @@ integrations:
   luckperms: true
   vaultunlocked: true
 
-# Rank perk values are fully configurable. The LuckPerms primary group is used when LuckPerms is available.
-# Market personal GUIs currently expose 45 slots, so staff is capped at 45 until paged personal menus are added.
 rank-perks:
   default:
     auction-slots: 3
