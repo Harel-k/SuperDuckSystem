@@ -1,0 +1,101 @@
+# SuperDuckSystem shop and sell configuration
+# Prices below are starter defaults only. Change every value to fit your server economy.
+
+sell:
+  safety:
+    reject-superduck-items: true
+    reject-renamed-items: true
+    reject-lore-items: true
+    reject-enchanted-items: true
+    reject-damaged-items: true
+    reject-shulker-boxes: true
+
+  menu:
+    title: "<green><bold>Sell Items</bold></green>"
+    rows: 6
+
+    # Players may manually place items only into these slots. Shift-click and drag insertion are
+    # intentionally blocked by the GUI engine for dupe/exploit safety.
+    input-slots:
+      - 10
+      - 11
+      - 12
+      - 13
+      - 14
+      - 15
+      - 16
+      - 19
+      - 20
+      - 21
+      - 22
+      - 23
+      - 24
+      - 25
+      - 28
+      - 29
+      - 30
+      - 31
+      - 32
+      - 33
+      - 34
+
+    filler:
+      material: GRAY_STAINED_GLASS_PANE
+      name: " "
+
+    summary:
+      slot: 45
+      material: PAPER
+      name: "<aqua><bold>Sale Summary</bold></aqua>"
+      value-line: "<gray>Value:</gray> <green>%value%</green>"
+      items-line: "<gray>Sellable items:</gray> <white>%items%</white>"
+      unsellable-line: "<gray>Unsellable items:</gray> <red>%unsellable%</red>"
+
+    confirm:
+      slot: 49
+      material: EMERALD_BLOCK
+      name: "<yellow><bold>Sell Items</bold></yellow>"
+      armed-name: "<green><bold>Confirm Sale</bold></green>"
+      instant-name: "<green><bold>Sell Now</bold></green>"
+      value-line: "<gray>You will receive:</gray> <green>%value%</green>"
+      line: "<yellow>Click to continue.</yellow>"
+      armed-line: "<green>Click again to confirm.</green>"
+      instant-line: "<yellow>Click to sell immediately.</yellow>"
+
+    cancel:
+      slot: 53
+      material: BARRIER
+      name: "<red><bold>Cancel</bold></red>"
+      lore: "<gray>Return your items and close.</gray>"
+
+  # Per-item sell prices. Materials not listed here cannot be sold.
+  prices:
+    WHEAT: "2"
+    CARROT: "2"
+    POTATO: "2"
+    BEETROOT: "2"
+    SUGAR_CANE: "2"
+    CACTUS: "2"
+    PUMPKIN: "4"
+    MELON_SLICE: "1"
+    BAMBOO: "1"
+    KELP: "1"
+    ROTTEN_FLESH: "2"
+    BONE: "3"
+    STRING: "3"
+    GUNPOWDER: "5"
+    SPIDER_EYE: "3"
+    ENDER_PEARL: "12"
+    COAL: "4"
+    RAW_IRON: "8"
+    IRON_INGOT: "10"
+    RAW_COPPER: "3"
+    COPPER_INGOT: "4"
+    RAW_GOLD: "14"
+    GOLD_INGOT: "18"
+    REDSTONE: "3"
+    LAPIS_LAZULI: "4"
+    QUARTZ: "5"
+    DIAMOND: "80"
+    EMERALD: "65"
+    NETHERITE_SCRAP: "200"
