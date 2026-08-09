@@ -67,6 +67,15 @@ commands:
     usage: /crates [crate] or /crates preview <crate>
     aliases: [crate]
     permission: superduck.crates
+  stats:
+    description: View player statistics
+    usage: /stats [player]
+    permission: superduck.stats
+  leaderboard:
+    description: View SuperDuck leaderboards
+    usage: /leaderboard [money|ducks|kills|playtime|crates]
+    aliases: [lb, top]
+    permission: superduck.leaderboard
 
 permissions:
   superduck.command:
@@ -116,6 +125,12 @@ permissions:
     default: true
   superduck.crates:
     description: Browse and open crates
+    default: true
+  superduck.stats:
+    description: View player stats
+    default: true
+  superduck.leaderboard:
+    description: View leaderboards
     default: true
   superduck.admin.keys:
     description: Grant digital crate keys
