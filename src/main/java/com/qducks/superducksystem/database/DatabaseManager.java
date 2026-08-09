@@ -8,6 +8,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -50,9 +52,9 @@ public final class DatabaseManager {
         });
     }
 
-    public boolean isReady() {
-        return ready;
-    }
+    public boolean isReady() { return ready; }
+
+    public File databaseFile() { return databaseFile; }
 
     public <T> CompletableFuture<T> submit(DatabaseOperation<T> operation) {
         CompletableFuture<T> future = new CompletableFuture<>();
@@ -70,16 +72,30 @@ public final class DatabaseManager {
         return future;
     }
 
+    public CompletableFuture<File> backup() {
+        return submit(connection -> {
+            File directory = new File(plugin.getDataFolder(), "backups");
+            if (!directory.exists() && !directory.mkdirs()) throw new IllegalStateException("Could not create backup directory");
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+            File destination = new File(directory, "SuperDuckSystem-" + timestamp + ".db");
+            int suffix = 1;
+            while (destination.exists()) destination = new File(directory, "SuperDuckSystem-" + timestamp + "-" + suffix++ + ".db");
+            String path = destination.getAbsolutePath().replace("'", "''");
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("PRAGMA wal_checkpoint(FULL)");
+                statement.execute("VACUUM INTO '" + path + "'");
+            }
+            return destination;
+        });
+    }
+
     public void upsertPlayer(UUID uuid, String username, long now) {
         submit(connection -> {
             String sql = "INSERT INTO players(uuid, username, first_join, last_seen) VALUES(?, ?, ?, ?) "
                     + "ON CONFLICT(uuid) DO UPDATE SET username=excluded.username, last_seen=excluded.last_seen";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setString(1, uuid.toString());
-                statement.setString(2, username);
-                statement.setLong(3, now);
-                statement.setLong(4, now);
-                statement.executeUpdate();
+                statement.setString(1, uuid.toString()); statement.setString(2, username);
+                statement.setLong(3, now); statement.setLong(4, now); statement.executeUpdate();
             }
             return null;
         }).exceptionally(error -> {
@@ -93,9 +109,7 @@ public final class DatabaseManager {
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys=ON");
             statement.execute("PRAGMA busy_timeout=5000");
-            if (plugin.getConfig().getBoolean("database.wal", true)) {
-                statement.execute("PRAGMA journal_mode=WAL");
-            }
+            if (plugin.getConfig().getBoolean("database.wal", true)) statement.execute("PRAGMA journal_mode=WAL");
         }
         return connection;
     }
@@ -103,104 +117,27 @@ public final class DatabaseManager {
     private void createSchema(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
-            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 6 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
-            statement.executeUpdate("UPDATE schema_version SET version=6 WHERE version < 6");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS players ("
-                    + "uuid TEXT PRIMARY KEY NOT NULL,"
-                    + "username TEXT NOT NULL,"
-                    + "first_join INTEGER NOT NULL,"
-                    + "last_seen INTEGER NOT NULL"
-                    + ")");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS balances ("
-                    + "uuid TEXT NOT NULL,"
-                    + "currency TEXT NOT NULL,"
-                    + "amount TEXT NOT NULL,"
-                    + "PRIMARY KEY(uuid, currency)"
-                    + ")");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS transactions ("
-                    + "id TEXT PRIMARY KEY NOT NULL,"
-                    + "created_at INTEGER NOT NULL,"
-                    + "type TEXT NOT NULL,"
-                    + "currency TEXT NOT NULL,"
-                    + "actor_uuid TEXT,"
-                    + "target_uuid TEXT,"
-                    + "amount TEXT NOT NULL"
-                    + ")");
+            statement.executeUpdate("INSERT INTO schema_version(version) SELECT 9 WHERE NOT EXISTS (SELECT 1 FROM schema_version)");
+            statement.executeUpdate("UPDATE schema_version SET version=9 WHERE version < 9");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS players (uuid TEXT PRIMARY KEY NOT NULL,username TEXT NOT NULL,first_join INTEGER NOT NULL,last_seen INTEGER NOT NULL)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS balances (uuid TEXT NOT NULL,currency TEXT NOT NULL,amount TEXT NOT NULL,PRIMARY KEY(uuid, currency))");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS transactions (id TEXT PRIMARY KEY NOT NULL,created_at INTEGER NOT NULL,type TEXT NOT NULL,currency TEXT NOT NULL,actor_uuid TEXT,target_uuid TEXT,amount TEXT NOT NULL)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transactions_actor ON transactions(actor_uuid, created_at)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_transactions_target ON transactions(target_uuid, created_at)");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS player_settings ("
-                    + "uuid TEXT NOT NULL,"
-                    + "setting TEXT NOT NULL,"
-                    + "value INTEGER NOT NULL,"
-                    + "PRIMARY KEY(uuid, setting)"
-                    + ")");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS auctions ("
-                    + "id TEXT PRIMARY KEY NOT NULL,"
-                    + "seller_uuid TEXT NOT NULL,"
-                    + "seller_name TEXT NOT NULL,"
-                    + "item_data BLOB NOT NULL,"
-                    + "item_material TEXT NOT NULL,"
-                    + "search_text TEXT NOT NULL,"
-                    + "price TEXT NOT NULL,"
-                    + "created_at INTEGER NOT NULL,"
-                    + "expires_at INTEGER NOT NULL,"
-                    + "status TEXT NOT NULL,"
-                    + "buyer_uuid TEXT,"
-                    + "sold_at INTEGER"
-                    + ")");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS player_settings (uuid TEXT NOT NULL,setting TEXT NOT NULL,value INTEGER NOT NULL,PRIMARY KEY(uuid, setting))");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS auctions (id TEXT PRIMARY KEY NOT NULL,seller_uuid TEXT NOT NULL,seller_name TEXT NOT NULL,item_data BLOB NOT NULL,item_material TEXT NOT NULL,search_text TEXT NOT NULL,price TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,status TEXT NOT NULL,buyer_uuid TEXT,sold_at INTEGER)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_status_created ON auctions(status, created_at)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_seller_status ON auctions(seller_uuid, status)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auctions_expires ON auctions(status, expires_at)");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS auction_claims ("
-                    + "id TEXT PRIMARY KEY NOT NULL,"
-                    + "listing_id TEXT NOT NULL,"
-                    + "player_uuid TEXT NOT NULL,"
-                    + "item_data BLOB NOT NULL,"
-                    + "reason TEXT NOT NULL,"
-                    + "status TEXT NOT NULL,"
-                    + "created_at INTEGER NOT NULL,"
-                    + "claimed_at INTEGER,"
-                    + "UNIQUE(listing_id, reason)"
-                    + ")");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS auction_claims (id TEXT PRIMARY KEY NOT NULL,listing_id TEXT NOT NULL,player_uuid TEXT NOT NULL,item_data BLOB NOT NULL,reason TEXT NOT NULL,status TEXT NOT NULL,created_at INTEGER NOT NULL,claimed_at INTEGER,UNIQUE(listing_id, reason))");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_auction_claims_player_status ON auction_claims(player_uuid, status, created_at)");
-
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS orders ("
-                    + "id TEXT PRIMARY KEY NOT NULL,"
-                    + "buyer_uuid TEXT NOT NULL,"
-                    + "buyer_name TEXT NOT NULL,"
-                    + "item_data BLOB NOT NULL,"
-                    + "item_material TEXT NOT NULL,"
-                    + "search_text TEXT NOT NULL,"
-                    + "total_amount INTEGER NOT NULL,"
-                    + "remaining_amount INTEGER NOT NULL,"
-                    + "price_each TEXT NOT NULL,"
-                    + "escrow_remaining TEXT NOT NULL,"
-                    + "created_at INTEGER NOT NULL,"
-                    + "status TEXT NOT NULL"
-                    + ")");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY NOT NULL,buyer_uuid TEXT NOT NULL,buyer_name TEXT NOT NULL,item_data BLOB NOT NULL,item_material TEXT NOT NULL,search_text TEXT NOT NULL,total_amount INTEGER NOT NULL,remaining_amount INTEGER NOT NULL,price_each TEXT NOT NULL,escrow_remaining TEXT NOT NULL,created_at INTEGER NOT NULL,status TEXT NOT NULL)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_orders_buyer_status ON orders(buyer_uuid, status)");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS order_fills ("
-                    + "id TEXT PRIMARY KEY NOT NULL,"
-                    + "order_id TEXT NOT NULL,"
-                    + "seller_uuid TEXT NOT NULL,"
-                    + "seller_name TEXT NOT NULL,"
-                    + "amount INTEGER NOT NULL,"
-                    + "payout TEXT NOT NULL,"
-                    + "created_at INTEGER NOT NULL"
-                    + ")");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS order_fills (id TEXT PRIMARY KEY NOT NULL,order_id TEXT NOT NULL,seller_uuid TEXT NOT NULL,seller_name TEXT NOT NULL,amount INTEGER NOT NULL,payout TEXT NOT NULL,created_at INTEGER NOT NULL)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_fills_order ON order_fills(order_id, created_at)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_fills_seller ON order_fills(seller_uuid, created_at)");
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS order_claims ("
-                    + "id TEXT PRIMARY KEY NOT NULL,"
-                    + "order_id TEXT NOT NULL,"
-                    + "player_uuid TEXT NOT NULL,"
-                    + "item_data BLOB NOT NULL,"
-                    + "amount INTEGER NOT NULL,"
-                    + "status TEXT NOT NULL,"
-                    + "created_at INTEGER NOT NULL,"
-                    + "claimed_at INTEGER"
-                    + ")");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS order_claims (id TEXT PRIMARY KEY NOT NULL,order_id TEXT NOT NULL,player_uuid TEXT NOT NULL,item_data BLOB NOT NULL,amount INTEGER NOT NULL,status TEXT NOT NULL,created_at INTEGER NOT NULL,claimed_at INTEGER)");
             statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_order_claims_player_status ON order_claims(player_uuid, status, created_at)");
         }
     }
@@ -209,17 +146,12 @@ public final class DatabaseManager {
         ready = false;
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                executor.shutdownNow();
-            }
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) executor.shutdownNow();
         } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            executor.shutdownNow();
+            Thread.currentThread().interrupt(); executor.shutdownNow();
         }
     }
 
     @FunctionalInterface
-    public interface DatabaseOperation<T> {
-        T execute(Connection connection) throws Exception;
-    }
+    public interface DatabaseOperation<T> { T execute(Connection connection) throws Exception; }
 }
