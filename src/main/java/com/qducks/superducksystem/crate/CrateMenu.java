@@ -22,6 +22,7 @@ import java.util.Map;
 
 public final class CrateMenu {
     private static final MiniMessage MINI = MiniMessage.miniMessage();
+    private static final List<Integer> DEFAULT_REWARD_SLOTS = java.util.stream.IntStream.range(0, 45).boxed().toList();
 
     private final SuperDuckSystem plugin;
     private final KeyService keys;
@@ -74,6 +75,86 @@ public final class CrateMenu {
                     "<gray>Loot and opening styles are configurable.</gray>"
             ));
         }
+        gui.open(player);
+    }
+
+    /**
+     * Menu opened by a physical crate block at spawn. It shows the complete loot pool,
+     * normalized chances, the player's key balance, and an Open button.
+     */
+    public void openPhysicalCrate(Player player, String crateId) {
+        List<CrateReward> rewards = crates.rewards(crateId);
+        FileConfiguration config = plugin.configs().crateLocations();
+        int rows = clampRows(config.getInt("block-menu.rows", 6));
+        String crateName = crates.displayName(crateId);
+        String title = config.getString("block-menu.title", "<gold><bold>%crate%</bold></gold>")
+                .replace("%crate%", escape(crateName));
+        DuckGui gui = new DuckGui(plugin, rows, MINI.deserialize(title));
+        fill(gui, config, "block-menu.filler");
+
+        List<Integer> rewardSlots = config.getIntegerList("block-menu.reward-slots");
+        if (rewardSlots.isEmpty()) {
+            rewardSlots = DEFAULT_REWARD_SLOTS;
+        }
+        double totalWeight = rewards.stream().mapToDouble(CrateReward::weight).filter(weight -> weight > 0).sum();
+        int index = 0;
+        for (CrateReward reward : rewards) {
+            if (index >= rewardSlots.size()) {
+                break;
+            }
+            int slot = rewardSlots.get(index++);
+            if (!validSlot(gui, slot)) {
+                continue;
+            }
+            ItemStack icon = crates.rewardIcon(reward).clone();
+            ItemMeta meta = icon.getItemMeta();
+            meta.displayName(MINI.deserialize("<white>" + escape(crates.rewardDescription(reward)) + "</white>"));
+            double percent = totalWeight <= 0 ? 0 : (reward.weight() / totalWeight) * 100.0;
+            meta.lore(List.of(
+                    MINI.deserialize("<gray>Chance:</gray> <yellow>" + formatPercent(percent) + "</yellow>"),
+                    MINI.deserialize("<dark_gray>Possible reward from " + escape(crateName) + ".</dark_gray>")
+            ));
+            icon.setItemMeta(meta);
+            gui.setDisplay(slot, icon);
+        }
+
+        String keyId = crates.keyId(crateId);
+        String keyName = keys.keyDisplayName(keyId);
+        int keyBalance = keys.cachedKeys(player.getUniqueId(), keyId);
+        Map<String, String> replacements = Map.of(
+                "crate", crateName,
+                "key", keyName,
+                "keys", Integer.toString(keyBalance),
+                "open_status", keyBalance > 0 ? "<green>Click to open!</green>" : "<red>You need a key.</red>"
+        );
+
+        int keySlot = config.getInt("block-menu.key-info.slot", 46);
+        if (validSlot(gui, keySlot)) {
+            Material keyMaterial = material(config.getString("block-menu.key-info.material"), Material.TRIPWIRE_HOOK);
+            gui.setDisplay(keySlot, configuredItem(config, "block-menu.key-info", keyMaterial,
+                    "<yellow><bold>%key%</bold></yellow>", replacements));
+        }
+
+        int openSlot = config.getInt("block-menu.open.slot", 49);
+        if (validSlot(gui, openSlot)) {
+            Material crateMaterial = material(
+                    plugin.configs().crates().getString("crates." + crateId + ".menu-material"),
+                    Material.CHEST
+            );
+            ItemStack open = configuredItem(config, "block-menu.open", crateMaterial,
+                    "<green><bold>OPEN %crate%</bold></green>", replacements);
+            gui.set(openSlot, new GuiButton(open, context -> openCrate(context.player(), crateId)));
+        }
+
+        int closeSlot = config.getInt("block-menu.close.slot", 53);
+        if (validSlot(gui, closeSlot)) {
+            Material closeMaterial = material(config.getString("block-menu.close.material"), Material.BARRIER);
+            gui.set(closeSlot, new GuiButton(
+                    configuredItem(config, "block-menu.close", closeMaterial, "<red>Close</red>", replacements),
+                    context -> context.player().closeInventory()
+            ));
+        }
+
         gui.open(player);
     }
 
@@ -182,7 +263,6 @@ public final class CrateMenu {
     private ItemStack rewardIcon(CrateReward reward, boolean winner) {
         ItemStack icon = crates.rewardIcon(reward).clone();
         ItemMeta meta = icon.getItemMeta();
-        Component original = meta.displayName();
         String prefix = winner ? "<green><bold>▶ WINNER: </bold></green>" : "<white>";
         meta.displayName(MINI.deserialize(prefix + escape(crates.rewardDescription(reward)) + (winner ? "" : "</white>")));
         List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
@@ -223,6 +303,7 @@ public final class CrateMenu {
                 MINI.deserialize("<aqua><bold>" + escape(crates.displayName(crateId)) + " Loot</bold></aqua>"));
         fill(gui, config, "crate-menu.filler");
         int slot = 0;
+        double totalWeight = rewards.stream().mapToDouble(CrateReward::weight).filter(weight -> weight > 0).sum();
         for (CrateReward reward : rewards) {
             while (slot < 45 && gui.getInventory().getItem(slot) != null) {
                 slot++;
@@ -233,12 +314,38 @@ public final class CrateMenu {
             ItemStack icon = crates.rewardIcon(reward).clone();
             ItemMeta meta = icon.getItemMeta();
             meta.displayName(MINI.deserialize("<white>" + escape(crates.rewardDescription(reward)) + "</white>"));
-            meta.lore(List.of(MINI.deserialize("<gray>Weight:</gray> <white>" + reward.weight() + "</white>")));
+            double percent = totalWeight <= 0 ? 0 : (reward.weight() / totalWeight) * 100.0;
+            meta.lore(List.of(MINI.deserialize("<gray>Chance:</gray> <yellow>" + formatPercent(percent) + "</yellow>")));
             icon.setItemMeta(meta);
             gui.setDisplay(slot++, icon);
         }
         gui.set(49, new GuiButton(GuiItems.item(Material.BARRIER, "<red>Back</red>"), context -> open(context.player())));
         gui.open(player);
+    }
+
+    private ItemStack configuredItem(
+            FileConfiguration config,
+            String base,
+            Material fallbackMaterial,
+            String fallbackName,
+            Map<String, String> replacements
+    ) {
+        Material itemMaterial = material(config.getString(base + ".material"), fallbackMaterial);
+        String name = replace(config.getString(base + ".name", fallbackName), replacements);
+        List<String> lore = new ArrayList<>();
+        for (String line : config.getStringList(base + ".lore")) {
+            lore.add(replace(line, replacements));
+        }
+        return GuiItems.item(itemMaterial, name, lore.toArray(String[]::new));
+    }
+
+    private String replace(String input, Map<String, String> replacements) {
+        String result = input == null ? "" : input;
+        for (Map.Entry<String, String> entry : replacements.entrySet()) {
+            String replacement = entry.getKey().equals("open_status") ? entry.getValue() : escape(entry.getValue());
+            result = result.replace("%" + entry.getKey() + "%", replacement);
+        }
+        return result;
     }
 
     private void fill(DuckGui gui, FileConfiguration config, String base) {
@@ -263,6 +370,13 @@ public final class CrateMenu {
 
     private int clampRows(int rows) {
         return Math.max(1, Math.min(6, rows));
+    }
+
+    private String formatPercent(double value) {
+        if (Math.abs(value - Math.rint(value)) < 0.005) {
+            return String.format(Locale.ROOT, "%.0f%%", value);
+        }
+        return String.format(Locale.ROOT, "%.2f%%", value);
     }
 
     private Throwable unwrap(Throwable throwable) {
