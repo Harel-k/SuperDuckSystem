@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("deprecation")
 public final class SuperDuckVaultEconomy extends AbstractEconomy {
+    private static final long DATABASE_TIMEOUT_SECONDS = 3L;
+
     private final SuperDuckSystem plugin;
 
     public SuperDuckVaultEconomy(SuperDuckSystem plugin) {
@@ -89,14 +91,22 @@ public final class SuperDuckVaultEconomy extends AbstractEconomy {
 
     @Override
     public EconomyResponse withdrawPlayer(String playerName, double amount) {
-        if (!validAmount(amount)) return failure(amount, getBalance(playerName), "Amount must be positive and finite");
         OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        double fallback = cachedBalance(player);
+        if (!validAmount(amount)) {
+            return failure(amount, fallback, "Amount must be positive and finite");
+        }
+        if (!plugin.database().isReady()) {
+            return failure(amount, fallback, "SuperDuckSystem database is still starting");
+        }
         try {
             BigDecimal updated = plugin.economy().take(player.getUniqueId(), CurrencyType.MONEY,
-                    BigDecimal.valueOf(amount), TransactionType.SYSTEM, null).get(3, TimeUnit.SECONDS);
+                    BigDecimal.valueOf(amount), TransactionType.SYSTEM, null)
+                    .get(DATABASE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             return success(amount, updated.doubleValue());
         } catch (Exception exception) {
-            return failure(amount, getBalance(playerName), rootMessage(exception));
+            // Do not call getBalance() here: if the DB is unhealthy that would block a second time.
+            return failure(amount, cachedBalance(player), rootMessage(exception));
         }
     }
 
@@ -107,14 +117,21 @@ public final class SuperDuckVaultEconomy extends AbstractEconomy {
 
     @Override
     public EconomyResponse depositPlayer(String playerName, double amount) {
-        if (!validAmount(amount)) return failure(amount, getBalance(playerName), "Amount must be positive and finite");
         OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
+        double fallback = cachedBalance(player);
+        if (!validAmount(amount)) {
+            return failure(amount, fallback, "Amount must be positive and finite");
+        }
+        if (!plugin.database().isReady()) {
+            return failure(amount, fallback, "SuperDuckSystem database is still starting");
+        }
         try {
             BigDecimal updated = plugin.economy().add(player.getUniqueId(), CurrencyType.MONEY,
-                    BigDecimal.valueOf(amount), TransactionType.SYSTEM, null).get(3, TimeUnit.SECONDS);
+                    BigDecimal.valueOf(amount), TransactionType.SYSTEM, null)
+                    .get(DATABASE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             return success(amount, updated.doubleValue());
         } catch (Exception exception) {
-            return failure(amount, getBalance(playerName), rootMessage(exception));
+            return failure(amount, cachedBalance(player), rootMessage(exception));
         }
     }
 
@@ -170,9 +187,13 @@ public final class SuperDuckVaultEconomy extends AbstractEconomy {
 
     @Override
     public boolean createPlayerAccount(String playerName) {
+        if (!plugin.database().isReady()) {
+            return false;
+        }
         OfflinePlayer player = Bukkit.getOfflinePlayer(playerName);
         try {
-            plugin.economy().balance(player.getUniqueId(), CurrencyType.MONEY).get(3, TimeUnit.SECONDS);
+            plugin.economy().balance(player.getUniqueId(), CurrencyType.MONEY)
+                    .get(DATABASE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             return true;
         } catch (Exception exception) {
             return false;
@@ -185,13 +206,23 @@ public final class SuperDuckVaultEconomy extends AbstractEconomy {
     }
 
     private double balance(OfflinePlayer player) {
-        BigDecimal cached = plugin.economy().cachedBalance(player.getUniqueId(), CurrencyType.MONEY);
-        if (player.isOnline()) return cached.doubleValue();
-        try {
-            return plugin.economy().balance(player.getUniqueId(), CurrencyType.MONEY).get(3, TimeUnit.SECONDS).doubleValue();
-        } catch (Exception exception) {
-            return cached.doubleValue();
+        double cached = cachedBalance(player);
+        if (!plugin.database().isReady()) {
+            return cached;
         }
+        try {
+            // EconomyService returns an already-completed future once this account is warm, while
+            // the first request can still load the actual value instead of briefly exposing $0.
+            return plugin.economy().balance(player.getUniqueId(), CurrencyType.MONEY)
+                    .get(DATABASE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .doubleValue();
+        } catch (Exception exception) {
+            return cached;
+        }
+    }
+
+    private double cachedBalance(OfflinePlayer player) {
+        return plugin.economy().cachedBalance(player.getUniqueId(), CurrencyType.MONEY).doubleValue();
     }
 
     private boolean validAmount(double amount) {
