@@ -34,6 +34,20 @@ jobs:
       - name: Build
         run: gradle clean build --stacktrace
 
+      - name: Verify shaded runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR="$(find build/libs -maxdepth 1 -type f -name 'SuperDuckSystem-*.jar' ! -name '*plain*' ! -name '*sources*' ! -name '*javadoc*' | head -n 1)"
+          if [ -z "$JAR" ]; then
+            echo "Shaded plugin jar is missing."
+            ls -lah build/libs || true
+            exit 1
+          fi
+          jar tf "$JAR" | grep -qx 'plugin.yml'
+          jar tf "$JAR" | grep -qx 'org/sqlite/JDBC.class'
+          echo "Verified plugin.yml and bundled SQLite JDBC driver in $JAR"
+
       - name: Prepare easy-download jar
         shell: bash
         run: |
