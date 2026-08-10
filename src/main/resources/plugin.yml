@@ -5,7 +5,7 @@ api-version: '1.21.11'
 description: Custom gameplay systems for QDucks SMP
 authors: [QDucks]
 website: https://qducks.com
-softdepend: [PlaceholderAPI, floodgate, LuckPerms, VaultUnlocked]
+softdepend: [PlaceholderAPI, floodgate, LuckPerms, Vault, VaultUnlocked]
 
 commands:
   superduck:
