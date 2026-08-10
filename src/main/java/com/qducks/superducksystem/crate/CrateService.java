@@ -14,16 +14,32 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class CrateService {
     private final SuperDuckSystem plugin;
     private final KeyService keys;
+    private final Set<UUID> activeOpenings = ConcurrentHashMap.newKeySet();
 
     public CrateService(SuperDuckSystem plugin, KeyService keys) {
         this.plugin = plugin;
         this.keys = keys;
+    }
+
+    public boolean tryBeginOpen(UUID playerUuid) {
+        return activeOpenings.add(playerUuid);
+    }
+
+    public void finishOpen(UUID playerUuid) {
+        activeOpenings.remove(playerUuid);
+    }
+
+    public boolean isOpening(UUID playerUuid) {
+        return activeOpenings.contains(playerUuid);
     }
 
     public List<String> configuredCrates() {
