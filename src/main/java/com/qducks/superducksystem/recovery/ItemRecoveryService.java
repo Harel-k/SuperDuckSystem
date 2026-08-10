@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 /**
  * Persistent fallback inbox for items that must be returned or delivered after an asynchronous
@@ -29,6 +30,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class ItemRecoveryService implements Listener {
     private static final long STALE_RESERVATION_MILLIS = 5L * 60L * 1000L;
+    private static final int DELIVERY_BATCH_SIZE = 100;
+    private static final int MARK_DELIVERED_RETRIES = 3;
 
     private final SuperDuckSystem plugin;
     private final AtomicBoolean schemaStarting = new AtomicBoolean();
@@ -67,48 +70,73 @@ public final class ItemRecoveryService implements Listener {
     }
 
     public CompletableFuture<UUID> queue(UUID playerUuid, ItemStack requestedItem, String source) {
-        if (requestedItem == null || requestedItem.getType().isAir() || requestedItem.getAmount() <= 0) {
-            return CompletableFuture.failedFuture(new IllegalArgumentException("Recovery item cannot be empty"));
-        }
-        ItemStack item = requestedItem.clone();
-        UUID id = UUID.randomUUID();
-        long now = System.currentTimeMillis();
-        String safeSource = source == null || source.isBlank() ? "UNKNOWN" : source.trim();
+        return queueAll(playerUuid, requestedItem == null ? List.of() : List.of(requestedItem), source)
+                .thenCompose(ids -> ids.isEmpty()
+                        ? CompletableFuture.failedFuture(new IllegalArgumentException("Recovery item cannot be empty"))
+                        : CompletableFuture.completedFuture(ids.get(0)));
+    }
 
+    /**
+     * Persists an entire recovery batch in one SQLite transaction. Either every stack becomes
+     * recoverable or none of them do, which avoids half-saved rewards after a database error.
+     * ItemStack serialization is always performed on the Bukkit primary thread.
+     */
+    public CompletableFuture<List<UUID>> queueAll(UUID playerUuid, List<ItemStack> items, String source) {
+        if (playerUuid == null) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Recovery player cannot be null"));
+        }
+        if (!Bukkit.isPrimaryThread()) {
+            List<ItemStack> references = items == null ? List.of() : new ArrayList<>(items);
+            return onMain(() -> queueAll(playerUuid, references, source));
+        }
+
+        List<QueuedRecovery> queued = new ArrayList<>();
+        if (items != null) {
+            for (ItemStack item : items) {
+                if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
+                    continue;
+                }
+                ItemStack copy = item.clone();
+                queued.add(new QueuedRecovery(UUID.randomUUID(), copy.serializeAsBytes()));
+            }
+        }
+        if (queued.isEmpty()) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        String safeSource = source == null || source.isBlank() ? "UNKNOWN" : source.trim();
+        long now = System.currentTimeMillis();
         return plugin.database().submit(connection -> {
             ensureSchema(connection);
+            boolean oldAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
             try (PreparedStatement statement = connection.prepareStatement(
                     "INSERT INTO item_recoveries(id, player_uuid, item_data, source, status, created_at) "
                             + "VALUES(?, ?, ?, ?, 'PENDING', ?)")) {
-                statement.setString(1, id.toString());
-                statement.setString(2, playerUuid.toString());
-                statement.setBytes(3, item.serializeAsBytes());
-                statement.setString(4, safeSource);
-                statement.setLong(5, now);
-                statement.executeUpdate();
+                for (QueuedRecovery entry : queued) {
+                    statement.setString(1, entry.id().toString());
+                    statement.setString(2, playerUuid.toString());
+                    statement.setBytes(3, entry.itemData());
+                    statement.setString(4, safeSource);
+                    statement.setLong(5, now);
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+                connection.commit();
+                return queued.stream().map(QueuedRecovery::id).toList();
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(oldAutoCommit);
             }
-            return id;
         });
     }
 
-    public CompletableFuture<List<UUID>> queueAll(UUID playerUuid, List<ItemStack> items, String source) {
-        if (items == null || items.isEmpty()) {
-            return CompletableFuture.completedFuture(List.of());
-        }
-        List<CompletableFuture<UUID>> futures = new ArrayList<>();
-        for (ItemStack item : items) {
-            if (item != null && !item.getType().isAir() && item.getAmount() > 0) {
-                futures.add(queue(playerUuid, item, source));
-            }
-        }
-        if (futures.isEmpty()) {
-            return CompletableFuture.completedFuture(List.of());
-        }
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))
-                .thenApply(ignored -> futures.stream().map(CompletableFuture::join).toList());
-    }
-
     public CompletableFuture<List<UUID>> queueMaterial(UUID playerUuid, Material material, int amount, String source) {
+        if (!Bukkit.isPrimaryThread()) {
+            return onMain(() -> queueMaterial(playerUuid, material, amount, source));
+        }
         if (material == null || !material.isItem() || material.isAir() || amount <= 0) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Recovery material/amount is invalid"));
         }
@@ -124,6 +152,9 @@ public final class ItemRecoveryService implements Listener {
     }
 
     public CompletableFuture<List<UUID>> queueAmount(UUID playerUuid, ItemStack template, int amount, String source) {
+        if (!Bukkit.isPrimaryThread()) {
+            return onMain(() -> queueAmount(playerUuid, template, amount, source));
+        }
         if (template == null || template.getType().isAir() || amount <= 0) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Recovery item/amount is invalid"));
         }
@@ -169,11 +200,7 @@ public final class ItemRecoveryService implements Listener {
                         try {
                             give(player, recovery.item());
                             delivered++;
-                            markDelivered(recovery).exceptionally(markError -> {
-                                plugin.getLogger().severe("Delivered recovery " + recovery.id()
-                                        + " but could not mark it delivered: " + rootMessage(markError));
-                                return null;
-                            });
+                            markDeliveredWithRetry(recovery, 1);
                         } catch (RuntimeException deliveryError) {
                             plugin.getLogger().severe("Could not deliver recovery " + recovery.id()
                                     + ": " + deliveryError.getMessage());
@@ -185,6 +212,12 @@ public final class ItemRecoveryService implements Listener {
                     if (delivered > 0 && player.isOnline()) {
                         player.sendRichMessage("<gold><bold>Recovered Items</bold></gold> <yellow>Returned "
                                 + delivered + " saved item stack" + (delivered == 1 ? "" : "s") + " to you.</yellow>");
+                    }
+
+                    // A reservation query intentionally caps each pass. Drain the next batch without
+                    // making a player relog if they accumulated a very large recovery inbox.
+                    if (recoveries.size() >= DELIVERY_BATCH_SIZE && player.isOnline()) {
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> deliverPending(player), 10L);
                     }
                 })
         );
@@ -233,8 +266,9 @@ public final class ItemRecoveryService implements Listener {
                 List<Recovery> candidates = new ArrayList<>();
                 try (PreparedStatement query = connection.prepareStatement(
                         "SELECT id, item_data, source, created_at FROM item_recoveries "
-                                + "WHERE player_uuid=? AND status='PENDING' ORDER BY created_at ASC LIMIT 100")) {
+                                + "WHERE player_uuid=? AND status='PENDING' ORDER BY created_at ASC LIMIT ?")) {
                     query.setString(1, playerUuid.toString());
+                    query.setInt(2, DELIVERY_BATCH_SIZE);
                     try (ResultSet result = query.executeQuery()) {
                         while (result.next()) {
                             candidates.add(new Recovery(
@@ -288,6 +322,22 @@ public final class ItemRecoveryService implements Listener {
         });
     }
 
+    private void markDeliveredWithRetry(Recovery recovery, int attempt) {
+        markDelivered(recovery).whenComplete((ignored, error) -> {
+            if (error == null) {
+                return;
+            }
+            if (attempt >= MARK_DELIVERED_RETRIES) {
+                plugin.getLogger().severe("Delivered recovery " + recovery.id()
+                        + " but could not mark it delivered after " + attempt + " attempts: " + rootMessage(error));
+                return;
+            }
+            long delay = 20L * attempt;
+            Bukkit.getScheduler().runTaskLater(plugin,
+                    () -> markDeliveredWithRetry(recovery, attempt + 1), delay);
+        });
+    }
+
     private void release(Recovery recovery) {
         plugin.database().submit(connection -> {
             try (PreparedStatement statement = connection.prepareStatement(
@@ -328,12 +378,33 @@ public final class ItemRecoveryService implements Listener {
         }
     }
 
+    private <T> CompletableFuture<T> onMain(Supplier<CompletableFuture<T>> supplier) {
+        CompletableFuture<T> result = new CompletableFuture<>();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            try {
+                supplier.get().whenComplete((value, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(error);
+                    } else {
+                        result.complete(value);
+                    }
+                });
+            } catch (Throwable error) {
+                result.completeExceptionally(error);
+            }
+        });
+        return result;
+    }
+
     private String rootMessage(Throwable throwable) {
         Throwable current = throwable;
         while (current.getCause() != null && current.getCause() != current) {
             current = current.getCause();
         }
         return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
+    }
+
+    private record QueuedRecovery(UUID id, byte[] itemData) {
     }
 
     private record Recovery(UUID id, UUID playerUuid, ItemStack item, String source, long createdAt) {
