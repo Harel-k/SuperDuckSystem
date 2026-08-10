@@ -3,6 +3,7 @@ package com.qducks.superducksystem.crate;
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
 import com.qducks.superducksystem.economy.TransactionType;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -71,15 +72,16 @@ public final class CrateService {
         CompletableFuture<String> grant = switch (reward.type()) {
             case ITEM -> {
                 int amount = Math.max(1, reward.itemAmount());
-                giveItem(player, reward.material(), amount);
-                yield CompletableFuture.completedFuture(amount + "x " + pretty(reward.material().name()));
+                yield queueItemReward(player, new ItemStack(reward.material()), amount,
+                        amount + "x " + pretty(reward.material().name()), "CRATE_ITEM");
             }
             case CUSTOM_ITEM -> {
                 int amount = Math.max(1, reward.itemAmount());
                 ItemStack template = plugin.customItems().createConfigured(reward.customItemId(), 1);
                 if (template == null) yield CompletableFuture.failedFuture(new IllegalArgumentException("Unknown custom crate item: " + reward.customItemId()));
-                giveItemStack(player, template, amount);
-                yield CompletableFuture.completedFuture(amount + "x " + pretty(reward.customItemId()));
+                template.setAmount(1);
+                yield queueItemReward(player, template, amount,
+                        amount + "x " + pretty(reward.customItemId()), "CRATE_CUSTOM_ITEM");
             }
             case MONEY -> plugin.economy().add(player.getUniqueId(), CurrencyType.MONEY, reward.currencyAmount(), TransactionType.CRATE_REWARD, null)
                     .thenApply(ignored -> plugin.economy().formatter().format(CurrencyType.MONEY, reward.currencyAmount()));
@@ -180,21 +182,14 @@ public final class CrateService {
         return item;
     }
 
-    private void giveItem(Player player, Material material, int requestedAmount) {
-        giveItemStack(player, new ItemStack(material), requestedAmount);
-    }
-
-    private void giveItemStack(Player player, ItemStack template, int requestedAmount) {
-        int left = requestedAmount;
-        int maxStack = Math.max(1, template.getMaxStackSize());
-        while (left > 0) {
-            int amount = Math.min(left, maxStack);
-            ItemStack stack = template.clone();
-            stack.setAmount(amount);
-            Map<Integer, ItemStack> leftovers = player.getInventory().addItem(stack);
-            for (ItemStack leftover : leftovers.values()) player.getWorld().dropItemNaturally(player.getLocation(), leftover);
-            left -= amount;
-        }
+    private CompletableFuture<String> queueItemReward(Player player, ItemStack template, int amount, String description, String source) {
+        return plugin.recoveries().queueAmount(player.getUniqueId(), template, amount, source)
+                .thenApply(ignored -> {
+                    if (player.isOnline()) {
+                        Bukkit.getScheduler().runTask(plugin, () -> plugin.recoveries().deliverPending(player));
+                    }
+                    return description;
+                });
     }
 
     private String normalize(String value) { return value == null ? "" : value.trim().toLowerCase(Locale.ROOT); }
