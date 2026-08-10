@@ -127,6 +127,10 @@ public final class SellMenu {
         if (session.processing) {
             return;
         }
+        if (plugin.state().readOnly() || plugin.state().maintenance("economy") || plugin.state().maintenance("shop")) {
+            messages.send(session.player, "sell.locked", "<red>Selling is temporarily unavailable.</red>");
+            return;
+        }
         Quote quote = quote(session);
         if (quote.itemCount <= 0 || quote.total.signum() <= 0) {
             messages.send(session.player, "sell.nothing", "<red>There are no sellable items in the menu.</red>");
@@ -175,14 +179,18 @@ public final class SellMenu {
                 session.player.getUniqueId()
         ).whenComplete((newBalance, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
             if (error != null) {
-                returnItems(session.player, removed);
-                messages.send(session.player, "sell.failed", "<red>The sale failed, so your items were returned.</red>");
+                returnItems(session.player, removed, "SHOP_SELL_FAILED");
+                if (session.player.isOnline()) {
+                    messages.send(session.player, "sell.failed", "<red>The sale failed, so your items were returned.</red>");
+                }
                 return;
             }
-            messages.send(session.player, "sell.success", "<green>Sold <white>%items%</white> items for %amount%.</green>", Map.of(
-                    "items", Integer.toString(soldItems),
-                    "amount", plugin.economy().formatter().format(CurrencyType.MONEY, payout)
-            ));
+            if (session.player.isOnline()) {
+                messages.send(session.player, "sell.success", "<green>Sold <white>%items%</white> items for %amount%.</green>", Map.of(
+                        "items", Integer.toString(soldItems),
+                        "amount", plugin.economy().formatter().format(CurrencyType.MONEY, payout)
+                ));
+            }
         }));
     }
 
@@ -212,11 +220,20 @@ public final class SellMenu {
                 continue;
             }
             session.gui.getInventory().clear(slot);
-            returnItems(session.player, List.of(item));
+            returnItems(session.player, List.of(item), "SELL_MENU_CLOSE");
         }
     }
 
-    private void returnItems(Player player, List<ItemStack> items) {
+    private void returnItems(Player player, List<ItemStack> items, String source) {
+        if (!player.isOnline()) {
+            plugin.recoveries().queueAll(player.getUniqueId(), items, source).whenComplete((ignored, error) -> {
+                if (error != null) {
+                    plugin.getLogger().severe("Could not persist offline item recovery for " + player.getUniqueId()
+                            + ": " + rootMessage(error));
+                }
+            });
+            return;
+        }
         for (ItemStack item : items) {
             Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item.clone());
             for (ItemStack leftover : leftovers.values()) {
@@ -249,6 +266,14 @@ public final class SellMenu {
         }
         Material found = Material.matchMaterial(raw);
         return found == null ? fallback : found;
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 
     private static final class SellSession {
