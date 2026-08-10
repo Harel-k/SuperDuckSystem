@@ -190,6 +190,15 @@ public final class ShopMenu {
                 player.getUniqueId()
         ).whenComplete((newBalance, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
             if (!player.isOnline()) {
+                if (error == null) {
+                    plugin.recoveries().queueMaterial(player.getUniqueId(), material, amount, "SHOP_BUY")
+                            .whenComplete((ignored, recoveryError) -> {
+                                if (recoveryError != null) {
+                                    plugin.getLogger().severe("Could not persist an offline shop purchase for "
+                                            + player.getUniqueId() + ": " + rootMessage(recoveryError));
+                                }
+                            });
+                }
                 return;
             }
             if (error != null) {
@@ -286,5 +295,13 @@ public final class ShopMenu {
 
     private Throwable unwrap(Throwable throwable) {
         return throwable.getCause() == null ? throwable : throwable.getCause();
+    }
+
+    private String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 }
