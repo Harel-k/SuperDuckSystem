@@ -29,7 +29,13 @@ public final class IntegrationManager {
     public void detect() {
         placeholderApi = enabledByConfig("placeholderapi") && Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
         luckPerms = enabledByConfig("luckperms") && Bukkit.getPluginManager().isPluginEnabled("LuckPerms");
-        vaultUnlocked = enabledByConfig("vaultunlocked") && Bukkit.getPluginManager().isPluginEnabled("VaultUnlocked");
+
+        // VaultUnlocked intentionally keeps the classic Bukkit plugin name "Vault"
+        // for compatibility. Also accept "VaultUnlocked" in case a downstream build
+        // changes the descriptor name.
+        boolean vaultBridgePresent = Bukkit.getPluginManager().isPluginEnabled("Vault")
+                || Bukkit.getPluginManager().isPluginEnabled("VaultUnlocked");
+        vaultUnlocked = enabledByConfig("vaultunlocked") && vaultBridgePresent;
 
         if (enabledByConfig("floodgate") && Bukkit.getPluginManager().isPluginEnabled("floodgate")) {
             bedrockService = new FloodgateBedrockService(plugin);
