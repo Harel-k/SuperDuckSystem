@@ -59,6 +59,9 @@ public final class AuctionService {
             BigDecimal requestedPrice,
             int slotLimit
     ) {
+        if (plugin.state().maintenance("auctions")) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Auctions are temporarily in maintenance mode"));
+        }
         if (item == null || item.getType().isAir() || item.getAmount() <= 0) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Auction item cannot be empty"));
         }
@@ -228,6 +231,9 @@ public final class AuctionService {
     }
 
     public CompletableFuture<PurchaseResult> purchase(UUID buyerUuid, UUID listingId) {
+        if (plugin.state().maintenance("auctions")) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Auctions are temporarily in maintenance mode"));
+        }
         long now = System.currentTimeMillis();
         return plugin.database().submit(connection -> {
             boolean oldAutoCommit = connection.getAutoCommit();
@@ -287,6 +293,9 @@ public final class AuctionService {
     }
 
     public CompletableFuture<AuctionListing> cancel(UUID sellerUuid, UUID listingId) {
+        if (plugin.state().maintenance("auctions")) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Auctions are temporarily in maintenance mode"));
+        }
         long now = System.currentTimeMillis();
         return plugin.database().submit(connection -> {
             boolean oldAutoCommit = connection.getAutoCommit();

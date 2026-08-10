@@ -123,6 +123,23 @@ public final class ItemRecoveryService implements Listener {
         return queueAll(playerUuid, stacks, source);
     }
 
+    public CompletableFuture<List<UUID>> queueAmount(UUID playerUuid, ItemStack template, int amount, String source) {
+        if (template == null || template.getType().isAir() || amount <= 0) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Recovery item/amount is invalid"));
+        }
+        List<ItemStack> stacks = new ArrayList<>();
+        int remaining = amount;
+        int maxStack = Math.max(1, template.getMaxStackSize());
+        while (remaining > 0) {
+            int size = Math.min(maxStack, remaining);
+            ItemStack stack = template.clone();
+            stack.setAmount(size);
+            stacks.add(stack);
+            remaining -= size;
+        }
+        return queueAll(playerUuid, stacks, source);
+    }
+
     public void deliverPending(Player player) {
         if (!ready || player == null || !player.isOnline() || !deliveringPlayers.add(player.getUniqueId())) {
             return;

@@ -440,6 +440,10 @@ public final class OrderMenu {
     }
 
     private void fillOrder(Player seller, OrderListing order, int amount) {
+        if (plugin.state().readOnly() || plugin.state().maintenance("economy") || plugin.state().maintenance("orders")) {
+            messages.send(seller, "order.locked", "<red>Orders are temporarily unavailable.</red>");
+            return;
+        }
         List<ItemStack> removed = removeMatching(seller.getInventory(), order.item(), amount);
         int removedCount = removed.stream().mapToInt(ItemStack::getAmount).sum();
         if (removedCount != amount) {
@@ -594,6 +598,15 @@ public final class OrderMenu {
         service.claim(player.getUniqueId(), claim.id()).whenComplete((result, error) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (!player.isOnline()) {
+                        if (error == null && result != null) {
+                            plugin.recoveries().queueAmount(player.getUniqueId(), result.item(), result.amount(), "ORDER_CLAIM")
+                                    .whenComplete((ignored, recoveryError) -> {
+                                        if (recoveryError != null) {
+                                            plugin.getLogger().severe("Could not persist offline order claim recovery for "
+                                                    + player.getUniqueId() + ": " + recoveryError.getMessage());
+                                        }
+                                    });
+                        }
                         return;
                     }
                     if (error != null) {
@@ -736,6 +749,13 @@ public final class OrderMenu {
 
     private void restoreItems(Player player, List<ItemStack> items) {
         if (!player.isOnline()) {
+            plugin.recoveries().queueAll(player.getUniqueId(), items, "ORDER_FILL_FAILED")
+                    .whenComplete((ignored, recoveryError) -> {
+                        if (recoveryError != null) {
+                            plugin.getLogger().severe("Could not persist failed order fill recovery for "
+                                    + player.getUniqueId() + ": " + recoveryError.getMessage());
+                        }
+                    });
             return;
         }
         for (ItemStack item : items) {

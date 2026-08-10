@@ -180,6 +180,10 @@ public final class ShopMenu {
         if (amount <= 0) {
             return;
         }
+        if (plugin.state().readOnly() || plugin.state().maintenance("economy") || plugin.state().maintenance("shop")) {
+            messages.send(player, "shop.locked", "<red>The shop is temporarily unavailable.</red>");
+            return;
+        }
         BigDecimal total = unitPrice.multiply(BigDecimal.valueOf(amount));
         player.closeInventory();
         plugin.economy().take(

@@ -537,6 +537,15 @@ public final class AuctionMenu {
         service.claim(player.getUniqueId(), claimId).whenComplete((claim, error) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (!player.isOnline()) {
+                        if (error == null && claim != null) {
+                            plugin.recoveries().queue(player.getUniqueId(), claim.item(), "AUCTION_CLAIM")
+                                    .whenComplete((ignored, recoveryError) -> {
+                                        if (recoveryError != null) {
+                                            plugin.getLogger().severe("Could not persist offline auction claim recovery for "
+                                                    + player.getUniqueId() + ": " + recoveryError.getMessage());
+                                        }
+                                    });
+                        }
                         return;
                     }
                     if (error != null) {
@@ -560,6 +569,13 @@ public final class AuctionMenu {
 
     private void restoreToSlotOrGive(Player player, ListingSelection selection) {
         if (!player.isOnline()) {
+            plugin.recoveries().queue(player.getUniqueId(), selection.item(), "AUCTION_LISTING_FAILED")
+                    .whenComplete((ignored, recoveryError) -> {
+                        if (recoveryError != null) {
+                            plugin.getLogger().severe("Could not persist failed auction listing recovery for "
+                                    + player.getUniqueId() + ": " + recoveryError.getMessage());
+                        }
+                    });
             return;
         }
         ItemStack current = player.getInventory().getItem(selection.inventorySlot());

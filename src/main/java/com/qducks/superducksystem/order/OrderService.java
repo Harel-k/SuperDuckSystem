@@ -58,6 +58,9 @@ public final class OrderService {
             BigDecimal requestedPriceEach,
             int slotLimit
     ) {
+        if (plugin.state().maintenance("orders")) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Orders are temporarily in maintenance mode"));
+        }
         if (requestedItem == null || requestedItem.getType().isAir()) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Order item cannot be empty"));
         }
@@ -200,6 +203,9 @@ public final class OrderService {
             UUID orderId,
             int requestedAmount
     ) {
+        if (plugin.state().maintenance("orders")) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Orders are temporarily in maintenance mode"));
+        }
         if (requestedAmount <= 0) {
             return CompletableFuture.failedFuture(new IllegalArgumentException("Fill amount must be positive"));
         }
@@ -296,6 +302,9 @@ public final class OrderService {
     }
 
     public CompletableFuture<CancelResult> cancel(UUID buyerUuid, UUID orderId) {
+        if (plugin.state().maintenance("orders")) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Orders are temporarily in maintenance mode"));
+        }
         return plugin.database().submit(connection -> {
             boolean oldAutoCommit = connection.getAutoCommit();
             connection.setAutoCommit(false);
