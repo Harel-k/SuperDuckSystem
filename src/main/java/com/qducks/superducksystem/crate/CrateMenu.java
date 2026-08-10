@@ -168,24 +168,34 @@ public final class CrateMenu {
             messages.send(player, "crates.no-key", "<red>You do not have the required key.</red>");
             return;
         }
+        if (!crates.tryBeginOpen(player.getUniqueId())) {
+            messages.send(player, "crates.already-opening", "<yellow>You already have a crate opening in progress.</yellow>");
+            return;
+        }
 
         crates.prepareOpen(player, crateId).whenComplete((prepared, error) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (!player.isOnline()) {
-                        return;
-                    }
                     if (error != null) {
-                        Throwable cause = unwrap(error);
-                        if (cause instanceof KeyService.NoKeyException) {
-                            messages.send(player, "crates.no-key", "<red>You do not have the required key.</red>");
-                        } else if (cause instanceof CrateService.CrateMaintenanceException) {
-                            player.sendRichMessage("<red>Crates are temporarily in maintenance mode.</red>");
-                        } else {
-                            messages.send(player, "crates.open-failed", "<red>Could not open that crate.</red>");
+                        crates.finishOpen(player.getUniqueId());
+                        if (player.isOnline()) {
+                            Throwable cause = unwrap(error);
+                            if (cause instanceof KeyService.NoKeyException) {
+                                messages.send(player, "crates.no-key", "<red>You do not have the required key.</red>");
+                            } else if (cause instanceof CrateService.CrateMaintenanceException) {
+                                player.sendRichMessage("<red>Crates are temporarily in maintenance mode.</red>");
+                            } else {
+                                messages.send(player, "crates.open-failed", "<red>Could not open that crate.</red>");
+                            }
                         }
                         return;
                     }
 
+                    // The key is consumed and the winner is fixed at this point. Even if the
+                    // player disconnects, grant the selected reward instead of allowing a reroll.
+                    if (!player.isOnline()) {
+                        grantPrepared(player, prepared);
+                        return;
+                    }
                     if (crates.openingStyle(crateId).equalsIgnoreCase("SCROLL")) {
                         runScroll(player, prepared);
                     } else {
@@ -230,7 +240,9 @@ public final class CrateMenu {
             public void run() {
                 if (!player.isOnline()) {
                     cancel();
-                    crates.refundConsumedKey(player, prepared);
+                    // Winner was already selected when the key was consumed. Persist/grant it
+                    // rather than refunding the key and making disconnects a reroll mechanic.
+                    grantPrepared(player, prepared);
                     return;
                 }
                 if (player.getOpenInventory().getTopInventory().getHolder() != gui) {
@@ -285,11 +297,25 @@ public final class CrateMenu {
         crates.grant(player, prepared).whenComplete((description, error) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (error != null) {
-                        crates.refundConsumedKey(player, prepared);
-                        messages.send(player, "crates.reward-failed",
-                                "<red>The reward failed, so your key was refunded.</red>");
+                        crates.refundConsumedKey(player, prepared).whenComplete((ignored, refundError) ->
+                                Bukkit.getScheduler().runTask(plugin, () -> {
+                                    crates.finishOpen(player.getUniqueId());
+                                    if (refundError != null) {
+                                        plugin.getLogger().severe("Crate reward and key refund both failed for "
+                                                + player.getUniqueId() + ": " + unwrap(refundError).getMessage());
+                                    }
+                                    if (player.isOnline()) {
+                                        messages.send(player, "crates.reward-failed",
+                                                refundError == null
+                                                        ? "<red>The reward failed, so your key was refunded.</red>"
+                                                        : "<red>The reward failed. Staff have been notified.</red>");
+                                    }
+                                })
+                        );
                         return;
                     }
+
+                    crates.finishOpen(player.getUniqueId());
                     if (player.isOnline()) {
                         player.closeInventory();
                         messages.send(player, "crates.reward", "<gold>You won <white>%reward%</white> from %crate%!</gold>", Map.of(
