@@ -13,6 +13,7 @@ import com.qducks.superducksystem.module.ModuleManager;
 import com.qducks.superducksystem.player.PlayerProfileListener;
 import com.qducks.superducksystem.rank.RankPerkListener;
 import com.qducks.superducksystem.rank.RankPerkService;
+import com.qducks.superducksystem.recovery.ItemRecoveryService;
 import com.qducks.superducksystem.reward.RewardService;
 import com.qducks.superducksystem.settings.SettingsService;
 import com.qducks.superducksystem.stats.StatsService;
@@ -34,6 +35,7 @@ public final class SuperDuckSystem extends JavaPlugin {
     private StatsService statsService;
     private KeyService keyService;
     private RewardService rewardService;
+    private ItemRecoveryService recoveryService;
     private SystemStateService systemStateService;
 
     @Override
@@ -53,6 +55,8 @@ public final class SuperDuckSystem extends JavaPlugin {
         this.statsService = new StatsService(this);
         this.keyService = new KeyService(this);
         this.rewardService = new RewardService(this);
+        this.recoveryService = new ItemRecoveryService(this);
+        this.recoveryService.start();
 
         this.integrationManager = new IntegrationManager(this);
         this.integrationManager.detect();
@@ -64,6 +68,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerProfileListener(this), this);
         getServer().getPluginManager().registerEvents(guiManager, this);
         getServer().getPluginManager().registerEvents(signInputService, this);
+        getServer().getPluginManager().registerEvents(recoveryService, this);
         getServer().getPluginManager().registerEvents(new RankPerkListener(rankPerkService), this);
         rankPerkService.reloadOnlinePlayers();
 
@@ -81,6 +86,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         if (rankPerkService != null) rankPerkService.shutdown();
         if (moduleManager != null) moduleManager.shutdown();
         if (integrationManager != null) integrationManager.shutdown();
+        if (recoveryService != null) recoveryService.stop();
         if (databaseManager != null) databaseManager.close();
     }
 
@@ -97,5 +103,6 @@ public final class SuperDuckSystem extends JavaPlugin {
     public StatsService stats() { return statsService; }
     public KeyService keys() { return keyService; }
     public RewardService rewards() { return rewardService; }
+    public ItemRecoveryService recoveries() { return recoveryService; }
     public SystemStateService state() { return systemStateService; }
 }
