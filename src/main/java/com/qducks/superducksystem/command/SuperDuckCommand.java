@@ -54,6 +54,7 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(miniMessage.deserialize("<gray>Version:</gray> <white>" + plugin.getPluginMeta().getVersion() + "</white>"));
         sender.sendMessage(miniMessage.deserialize("<gray>Server:</gray> <white>" + escape(plugin.configs().serverName()) + "</white>"));
         sender.sendMessage(miniMessage.deserialize("<gray>Database:</gray> " + ready(plugin.database().isReady())));
+        sender.sendMessage(miniMessage.deserialize("<gray>Item recovery:</gray> " + ready(plugin.recoveries().ready())));
         sender.sendMessage(miniMessage.deserialize("<gray>Stats:</gray> " + ready(plugin.stats().ready())));
         sender.sendMessage(miniMessage.deserialize("<gray>Rewards:</gray> " + ready(plugin.rewards().ready())));
         sender.sendMessage(miniMessage.deserialize("<gray>Digital keys:</gray> " + ready(plugin.keys().ready())));
