@@ -1,5 +1,6 @@
 plugins {
     java
+    id("com.gradleup.shadow") version "9.2.2"
 }
 
 group = "com.qducks"
@@ -31,6 +32,12 @@ dependencies {
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
     compileOnly("net.luckperms:api:5.5")
     compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.20")
+
+    // Paper does not guarantee an SQLite JDBC driver for plugins. Bundle it so the
+    // database works on a clean server instead of depending on another plugin's classloader.
+    implementation("org.xerial:sqlite-jdbc:3.53.1.0") {
+        exclude(group = "org.slf4j")
+    }
 }
 
 java {
@@ -52,5 +59,16 @@ tasks {
 
     jar {
         archiveBaseName.set("SuperDuckSystem")
+        archiveClassifier.set("plain")
+    }
+
+    shadowJar {
+        archiveBaseName.set("SuperDuckSystem")
+        archiveClassifier.set("")
+        mergeServiceFiles()
+    }
+
+    build {
+        dependsOn(shadowJar)
     }
 }
