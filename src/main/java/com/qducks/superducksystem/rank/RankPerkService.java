@@ -1,17 +1,20 @@
 package com.qducks.superducksystem.rank;
 
 import com.qducks.superducksystem.SuperDuckSystem;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachment;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
 /**
  * Converts configured LuckPerms rank perks into normal Bukkit permissions so every module can use
- * the same numeric permission system. Explicit higher numeric permissions still win naturally.
+ * the same numeric permission system. Rank config IDs are intentionally separate from LuckPerms
+ * group names so server owners can rename groups without recompiling SuperDuckSystem.
  */
 public final class RankPerkService {
     private final SuperDuckSystem plugin;
@@ -24,19 +27,71 @@ public final class RankPerkService {
     public void apply(Player player) {
         clear(player);
 
-        String group = plugin.integrations().ranks().primaryGroup(player).toLowerCase(Locale.ROOT);
-        String base = "rank-perks." + group + ".";
-        String fallback = "rank-perks.default.";
+        String primaryGroup = plugin.integrations().ranks().primaryGroup(player).toLowerCase(Locale.ROOT);
+        ConfigurationSection fallback = plugin.getConfig().getConfigurationSection("rank-perks.default");
+        ConfigurationSection rank = findRank(primaryGroup);
 
-        int auctionSlots = Math.max(0, plugin.getConfig().getInt(base + "auction-slots",
-                plugin.getConfig().getInt(fallback + "auction-slots", 3)));
-        int orderSlots = Math.max(0, plugin.getConfig().getInt(base + "order-slots",
-                plugin.getConfig().getInt(fallback + "order-slots", 3)));
+        int defaultAuctionSlots = getNonNegative(fallback, "auction-slots", 3);
+        int defaultOrderSlots = getNonNegative(fallback, "order-slots", 3);
+        int auctionSlots = getNonNegative(rank, "auction-slots", defaultAuctionSlots);
+        int orderSlots = getNonNegative(rank, "order-slots", defaultOrderSlots);
 
         PermissionAttachment attachment = player.addAttachment(plugin);
         attachment.setPermission("superduck.auction.slots." + auctionSlots, true);
         attachment.setPermission("superduck.order.slots." + orderSlots, true);
+        applyExtraPermissions(attachment, fallback);
+        applyExtraPermissions(attachment, rank);
         attachments.put(player.getUniqueId(), attachment);
+    }
+
+    private ConfigurationSection findRank(String primaryGroup) {
+        ConfigurationSection ranks = plugin.getConfig().getConfigurationSection("rank-perks.ranks");
+        if (ranks != null) {
+            for (String rankId : ranks.getKeys(false)) {
+                ConfigurationSection section = ranks.getConfigurationSection(rankId);
+                if (section == null || !section.getBoolean("enabled", true)) {
+                    continue;
+                }
+
+                String configuredGroup = section.getString("group-name", rankId);
+                if (configuredGroup != null && configuredGroup.equalsIgnoreCase(primaryGroup)) {
+                    return section;
+                }
+
+                for (String alias : section.getStringList("group-aliases")) {
+                    if (alias.equalsIgnoreCase(primaryGroup)) {
+                        return section;
+                    }
+                }
+            }
+        }
+
+        // Backward compatibility for older configs where the section name itself was the group name.
+        ConfigurationSection legacy = plugin.getConfig().getConfigurationSection("rank-perks." + primaryGroup);
+        if (legacy != null && !primaryGroup.equals("default") && !primaryGroup.equals("ranks")) {
+            return legacy;
+        }
+        return null;
+    }
+
+    private int getNonNegative(ConfigurationSection section, String path, int fallback) {
+        if (section == null) {
+            return Math.max(0, fallback);
+        }
+        return Math.max(0, section.getInt(path, fallback));
+    }
+
+    private void applyExtraPermissions(PermissionAttachment attachment, ConfigurationSection section) {
+        if (section == null) {
+            return;
+        }
+        List<String> permissions = section.getStringList("permissions");
+        for (String permission : permissions) {
+            if (permission == null || permission.isBlank()) {
+                continue;
+            }
+            attachment.setPermission(permission.trim(), true);
+        }
     }
 
     public void clear(Player player) {
