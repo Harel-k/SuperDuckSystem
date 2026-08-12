@@ -6,7 +6,7 @@ items:
     material: DIAMOND_PICKAXE
     name: "<aqua><bold>Duck Pickaxe</bold></aqua>"
     lore:
-      - "<gray>Mines a <white>3x3</white> area.</gray>"
+      - "<gray>Mines a <white>9x9</white> area.</gray>"
       - "<dark_gray>SuperDuck item</dark_gray>"
     enchantments:
       efficiency: 5
@@ -17,7 +17,7 @@ items:
     material: DIAMOND_SHOVEL
     name: "<yellow><bold>Duck Shovel</bold></yellow>"
     lore:
-      - "<gray>Digs a <white>3x3</white> area.</gray>"
+      - "<gray>Digs a <white>9x9</white> area.</gray>"
       - "<dark_gray>SuperDuck item</dark_gray>"
     enchantments:
       efficiency: 5
@@ -28,7 +28,7 @@ items:
     material: DIAMOND_AXE
     name: "<green><bold>Duck Axe</bold></green>"
     lore:
-      - "<gray>Fells connected tree logs.</gray>"
+      - "<gray>Fells the full connected tree vein.</gray>"
       - "<dark_gray>SuperDuck item</dark_gray>"
     enchantments:
       efficiency: 5
@@ -38,11 +38,13 @@ items:
 tools:
   duck_pickaxe:
     enabled: true
-    width: 3
-    height: 3
+    # Odd sizes from 1-9 are supported. QDucks SMP defaults to 9x9.
+    width: 9
+    height: 9
     depth: 1
-    max-extra-blocks: 8
-    # Empty = automatically allow normal pickaxe-mineable stone/ore style blocks.
+    max-extra-blocks: 80
+    # Empty = automatically allow normal pickaxe-style solid blocks while excluding containers,
+    # liquids, logs/leaves and the blocked list below.
     allowed-blocks: []
     blocked-blocks:
       - BEDROCK
@@ -51,10 +53,11 @@ tools:
 
   duck_shovel:
     enabled: true
-    width: 3
-    height: 3
+    # Odd sizes from 1-9 are supported. QDucks SMP defaults to 9x9.
+    width: 9
+    height: 9
     depth: 1
-    max-extra-blocks: 8
+    max-extra-blocks: 80
     # Empty = automatically allow dirt/sand/gravel/snow/clay style blocks.
     allowed-blocks: []
     blocked-blocks:
@@ -64,11 +67,14 @@ tools:
   duck_axe:
     enabled: true
     tree-vein-enabled: true
-    max-blocks: 256
-    # Maximum cube distance from the first broken log. Stops giant log structures being deleted.
-    max-radius: 16
+    # Safety caps are intentionally configurable. These defaults are high enough for full
+    # vanilla tree veins while still preventing an accidental unbounded log-structure wipe.
+    max-blocks: 2048
+    max-radius: 32
+    connect-diagonally: true
     include-wood-blocks: true
     include-stems: true
+    # Empty = automatically include logs plus the enabled wood/stem types above.
     allowed-blocks: []
 
 safety:
