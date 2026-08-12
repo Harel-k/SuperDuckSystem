@@ -61,7 +61,7 @@ listing:
 
 limits:
   # Rank values are assigned from config.yml. Higher numeric permission nodes still work.
-  default-slots: 3
+  default-slots: 18
 
 menu:
   title: "<gold><bold>Auction House</bold></gold> <gray>%page%/%pages%</gray>"
@@ -169,14 +169,14 @@ confirmation:
   cancel-name: "<red><bold>Cancel</bold></red>"
 
 my-items:
-  title: "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray>"
+  title: "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray> <dark_gray>•</dark_gray> <gray>%page%/%pages%</gray>"
   rows: 6
   page-size: 47
   filler:
     enabled: true
     material: BLACK_STAINED_GLASS_PANE
     name: " "
-  # 47 visible market slots so QDucks Plus+/Plus++ style limits can be fully managed.
+  # The screen paginates, so ranks can safely have more slots than fit in one inventory.
   content-slots:
     - 0
     - 1
@@ -231,7 +231,15 @@ my-items:
     lore:
       - "<gray>Used slots:</gray> <white>%used%/%limit%</white>"
       - "<yellow>Click to choose an item from your inventory.</yellow>"
+  previous:
+    slot: 48
+    material: ARROW
+    name: "<yellow>Previous Page</yellow>"
   back:
     slot: 49
     material: BARRIER
     name: "<red>Back</red>"
+  next:
+    slot: 50
+    material: ARROW
+    name: "<yellow>Next Page</yellow>"
