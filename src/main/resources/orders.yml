@@ -207,7 +207,7 @@ confirmation:
 my-orders:
   title: "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray>"
   rows: 6
-  # 45 visible market slots: enough for the default Duck+++ perk.
+  # 47 visible market slots so QDucks Plus+/Plus++ style limits can be fully managed.
   content-slots:
     - 0
     - 1
@@ -254,6 +254,8 @@ my-orders:
     - 42
     - 43
     - 44
+    - 45
+    - 46
   filler:
     enabled: true
     material: BLACK_STAINED_GLASS_PANE
