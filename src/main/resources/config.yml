@@ -30,37 +30,88 @@ integrations:
   luckperms: true
   vaultunlocked: true
 
+# Rank IDs below are internal config IDs. They do NOT need to match your LuckPerms group names.
+# Change group-name to whatever the real primary LuckPerms group is on your server.
+# group-aliases can be used when multiple primary group names should receive the same perks.
+# permissions is optional and can contain any extra Bukkit permission nodes this rank should receive.
 rank-perks:
   default:
     auction-slots: 3
     order-slots: 3
-  duckplus:
-    auction-slots: 9
-    order-slots: 9
-  duckplusplus:
-    auction-slots: 20
-    order-slots: 20
-  duckplusplusplus:
-    auction-slots: 45
-    order-slots: 45
-  staff:
-    auction-slots: 45
-    order-slots: 45
-  helper:
-    auction-slots: 45
-    order-slots: 45
-  moderator:
-    auction-slots: 45
-    order-slots: 45
-  admin:
-    auction-slots: 45
-    order-slots: 45
-  developer:
-    auction-slots: 45
-    order-slots: 45
-  owner:
-    auction-slots: 45
-    order-slots: 45
+    permissions: []
+
+  ranks:
+    plus:
+      enabled: true
+      group-name: "duckplus"
+      group-aliases: []
+      auction-slots: 27
+      order-slots: 27
+      permissions: []
+
+    plusplus:
+      enabled: true
+      group-name: "duckplusplus"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    plusplusplus:
+      enabled: true
+      group-name: "duckplusplusplus"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    staff:
+      enabled: true
+      group-name: "staff"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    helper:
+      enabled: true
+      group-name: "helper"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    moderator:
+      enabled: true
+      group-name: "moderator"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    admin:
+      enabled: true
+      group-name: "admin"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    developer:
+      enabled: true
+      group-name: "developer"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
+
+    owner:
+      enabled: true
+      group-name: "owner"
+      group-aliases: []
+      auction-slots: 47
+      order-slots: 47
+      permissions: []
 
 # Duck Pickaxe/Shovel/Axe definitions and behavior live in custom-items.yml.
 
