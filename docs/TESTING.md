@@ -41,6 +41,7 @@ This is the final live-server gate before merging `dev` to `main` and tagging st
 - Disconnect immediately after submitting a listing that later fails; the removed listing item must return through inventory/recovery.
 - Turn `/sds maintenance auctions on` while an AH GUI is already open; purchases/listings/cancels must be rejected.
 - Restart with an active listing and confirm it remains intact.
+- For a 47-slot rank, fill enough listings to confirm slots 45 and 46 are visible and manageable in My Auctions.
 
 ## 5. Buy Orders — two players
 - Open My Orders and click a free slot.
@@ -53,13 +54,20 @@ This is the final live-server gate before merging `dev` to `main` and tagging st
 - Disconnect the seller immediately after confirming a fill that is forced to fail; removed items must return through inventory/recovery.
 - Disconnect the buyer immediately while claiming delivered order items, then rejoin; the claim must be recovered exactly once.
 - Turn `/sds maintenance orders on` while an Order GUI is already open; create/fill/cancel actions must be rejected.
+- For a 47-slot rank, fill enough orders to confirm slots 45 and 46 are visible and manageable in My Orders.
 
-## 6. Rank slots
-With LuckPerms primary groups, confirm the configured limits:
-- default: 3 AH / 3 Order
-- duckplus: 9 / 9
-- duckplusplus: 20 / 20
-- duckplusplusplus: 45 / 45
+## 6. Rank mapping and perks
+With LuckPerms primary groups, confirm the configured QDucks defaults:
+- default/unmatched group: 3 AH / 3 Order
+- configured Plus group (default `duckplus`): 27 / 27
+- configured Plus+ group (default `duckplusplus`): 47 / 47
+- configured Plus++ group (default `duckplusplusplus`): 47 / 47
+
+Also test configurability:
+- Change one rank's `group-name` to a temporary LuckPerms primary group and run `/sds reload`; the player should immediately receive that rank's configured slot perks.
+- Add a temporary `group-aliases` entry and confirm the alias receives the same perks after `/sds reload`.
+- Add a harmless test permission under a rank's `permissions` list and confirm it is granted, then remove it and reload.
+- Confirm unmatched groups always fall back to `rank-perks.default`.
 
 ## 7. Duck Tools
 Give test tools:
@@ -68,10 +76,14 @@ Give test tools:
 - `/sds giveitem <player> duck_axe`
 
 Confirm:
-- Pickaxe mines a 3x3 plane.
-- Shovel digs a 3x3 plane.
-- Axe fells connected tree logs only up to configured safety limits.
-- WorldGuard/protected spawn blocks are not broken by the extra-block effect.
+- Pickaxe mines a 9x9 face-oriented plane by default (81 total blocks including the originally broken block when all targets are valid).
+- Shovel digs a 9x9 face-oriented plane by default.
+- Pickaxe/Shovel respect `width`, `height`, `depth`, `max-extra-blocks`, allowed-block and blocked-block config changes after `/sds reload`.
+- Axe fells the full connected tree log vein for normal and large vanilla trees up to the configured safety limits.
+- Axe respects `max-blocks`, `max-radius`, `connect-diagonally`, `include-wood-blocks`, `include-stems` and `allowed-blocks`.
+- With `connect-diagonally: false`, only face-connected tree blocks should chain.
+- WorldGuard/protected spawn blocks are not broken by any extra-block effect.
+- CoreProtect/other BlockBreakEvent listeners see the extra blocks through the normal player break path.
 - Normal durability/enchantment behavior works.
 - Turn `/sds maintenance custom-tools on`; extra-block/tree effects must stop immediately.
 
@@ -106,7 +118,7 @@ From a Bedrock account test:
 - Order search + amount + price native text forms.
 - Shop/Sell/AH/Orders inventory GUIs.
 - Crate preview + opening.
-- Duck Tool behavior.
+- Duck Tool behavior, including a 9x9 Pickaxe/Shovel test.
 - Repeat at least one economy, AH, Order and crate transaction from Bedrock and confirm it produces the same persistent data as Java.
 
 ## 11. Restart / recovery
