@@ -9,6 +9,7 @@
 - Async SQLite + UUID player profiles
 - Persistent custom item identity through PDC
 - PlaceholderAPI, Floodgate, LuckPerms and VaultUnlocked integrations
+- Configurable LuckPerms group mapping, aliases, market slot perks and optional extra permission perks
 - `/superduck` (`/sds`) status/reload/admin tooling
 
 ### ✅ Economy / Ducks
@@ -30,7 +31,8 @@
 - Search, sorting, refresh and My Auctions
 - Click empty My Auctions slot -> inventory picker -> price -> confirmation
 - Escrow, claims and transactional purchase protection
-- LuckPerms rank slot limits
+- LuckPerms rank slot limits with configurable group names
+- QDucks defaults: 3 base, 27 Plus, 47 Plus+, 47 Plus++ slots
 
 ### ✅ Buy Orders
 - `/order`, `/order <search>`, `/order create`
@@ -38,7 +40,8 @@
 - Amount + price-per-item + final-cost confirmation
 - Full buyer escrow, partial fills and item claims
 - Click empty My Orders slot to create
-- LuckPerms rank slot limits
+- LuckPerms rank slot limits with configurable group names
+- QDucks defaults: 3 base, 27 Plus, 47 Plus+, 47 Plus++ slots
 
 ### ✅ Keys / Crates
 - Digital keys and configurable online-playtime milestones
@@ -52,9 +55,10 @@
 - Crate/key player stats
 
 ### ✅ Duck Tools / Custom Items
-- Configurable Duck Pickaxe 3x3
-- Configurable Duck Shovel 3x3
-- Configurable Duck Axe connected-tree vein felling
+- Configurable Duck Pickaxe with QDucks default 9x9 face-oriented mining
+- Configurable Duck Shovel with QDucks default 9x9 face-oriented digging
+- Configurable Duck Axe full connected-tree vein felling with safety caps
+- Optional diagonal tree connectivity plus log/wood/stem/hypha controls
 - Normal block-break event path for protection/plugin compatibility
 - Configurable custom item material/name/lore/enchantments
 - `/sds giveitem`
@@ -94,7 +98,9 @@ The gameplay feature set is complete. The remaining release gate is **live serve
 - Bedrock/Geyser runtime test
 - Two-player AH concurrency test
 - Two-player partial-order fill test
-- Protected-area Duck Tool test
+- LuckPerms group-name/perk mapping test against the real QDucks groups
+- Protected-area 9x9 Duck Tool test
+- Full-tree Duck Axe vein test across normal and large vanilla trees
 - Crate disconnect/restart behavior test
 - Full server restart + database recovery check
 - Spark/performance check under real players
