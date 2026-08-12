@@ -52,10 +52,12 @@ public final class DuckToolListener implements Listener {
         String base = "tools." + toolId;
         if (!config.getBoolean(base + ".enabled", true) || !isAllowed(origin.getType(), toolId, config, base)) return;
 
-        int width = oddClamp(config.getInt(base + ".width", 3), 1, 9);
-        int height = oddClamp(config.getInt(base + ".height", 3), 1, 9);
+        int width = oddClamp(config.getInt(base + ".width", 9), 1, 9);
+        int height = oddClamp(config.getInt(base + ".height", 9), 1, 9);
         int depth = Math.max(1, Math.min(3, config.getInt(base + ".depth", 1)));
-        int maxExtra = Math.max(0, Math.min(80, config.getInt(base + ".max-extra-blocks", width * height * depth - 1)));
+        int theoreticalExtra = Math.max(0, width * height * depth - 1);
+        int maxExtra = Math.max(0, Math.min(242,
+                config.getInt(base + ".max-extra-blocks", theoreticalExtra)));
         if (maxExtra == 0) return;
 
         List<Block> targets = areaTargets(player, origin, width, height, depth);
@@ -86,13 +88,25 @@ public final class DuckToolListener implements Listener {
             int depthSign;
             if (ay >= ax && ay >= az) {
                 depthSign = direction.getY() >= 0 ? 1 : -1;
-                for (int a = -halfW; a <= halfW; a++) for (int b = -halfH; b <= halfH; b++) result.add(origin.getRelative(a, d * depthSign, b));
+                for (int a = -halfW; a <= halfW; a++) {
+                    for (int b = -halfH; b <= halfH; b++) {
+                        result.add(origin.getRelative(a, d * depthSign, b));
+                    }
+                }
             } else if (ax >= az) {
                 depthSign = direction.getX() >= 0 ? 1 : -1;
-                for (int a = -halfW; a <= halfW; a++) for (int b = -halfH; b <= halfH; b++) result.add(origin.getRelative(d * depthSign, b, a));
+                for (int a = -halfW; a <= halfW; a++) {
+                    for (int b = -halfH; b <= halfH; b++) {
+                        result.add(origin.getRelative(d * depthSign, b, a));
+                    }
+                }
             } else {
                 depthSign = direction.getZ() >= 0 ? 1 : -1;
-                for (int a = -halfW; a <= halfW; a++) for (int b = -halfH; b <= halfH; b++) result.add(origin.getRelative(a, b, d * depthSign));
+                for (int a = -halfW; a <= halfW; a++) {
+                    for (int b = -halfH; b <= halfH; b++) {
+                        result.add(origin.getRelative(a, b, d * depthSign));
+                    }
+                }
             }
         }
         return result;
@@ -105,8 +119,9 @@ public final class DuckToolListener implements Listener {
                 || !config.getBoolean(base + ".tree-vein-enabled", true)
                 || !isTreeBlock(origin.getType(), config, base)) return;
 
-        int maxBlocks = Math.max(1, Math.min(1024, config.getInt(base + ".max-blocks", 256)));
-        int maxRadius = Math.max(1, Math.min(64, config.getInt(base + ".max-radius", 16)));
+        int maxBlocks = Math.max(1, Math.min(4096, config.getInt(base + ".max-blocks", 2048)));
+        int maxRadius = Math.max(1, Math.min(96, config.getInt(base + ".max-radius", 32)));
+        boolean connectDiagonally = config.getBoolean(base + ".connect-diagonally", true);
         Set<BlockKey> visited = new HashSet<>();
         ArrayDeque<Block> queue = new ArrayDeque<>();
         List<Block> connected = new ArrayList<>();
@@ -121,10 +136,12 @@ public final class DuckToolListener implements Listener {
                     || Math.abs(current.getZ() - origin.getZ()) > maxRadius) continue;
             if (!isTreeBlock(current.getType(), config, base)) continue;
             connected.add(current);
+
             for (int x = -1; x <= 1; x++) {
                 for (int y = -1; y <= 1; y++) {
                     for (int z = -1; z <= 1; z++) {
                         if (x == 0 && y == 0 && z == 0) continue;
+                        if (!connectDiagonally && Math.abs(x) + Math.abs(y) + Math.abs(z) != 1) continue;
                         queue.addLast(current.getRelative(x, y, z));
                     }
                 }
