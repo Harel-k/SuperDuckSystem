@@ -89,7 +89,7 @@ creation:
 
 limits:
   # Rank values are assigned from config.yml. Higher numeric permission nodes still work.
-  default-slots: 3
+  default-slots: 18
 
 menu:
   title: "<aqua><bold>Buy Orders</bold></aqua> <gray>%page%/%pages%</gray>"
@@ -205,9 +205,10 @@ confirmation:
   fill-title: "<green><bold>Fill Order</bold></green>"
 
 my-orders:
-  title: "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray>"
+  title: "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray> <dark_gray>•</dark_gray> <gray>%page%/%pages%</gray>"
   rows: 6
-  # 47 visible market slots so QDucks Plus+/Plus++ style limits can be fully managed.
+  page-size: 47
+  # The screen paginates, so ranks can safely have more slots than fit in one inventory.
   content-slots:
     - 0
     - 1
@@ -266,7 +267,15 @@ my-orders:
     lore:
       - "<gray>Used slots:</gray> <white>%used%/%limit%</white>"
       - "<yellow>Click to choose an item.</yellow>"
+  previous:
+    slot: 48
+    material: ARROW
+    name: "<yellow>Previous Page</yellow>"
   back:
     slot: 49
     material: BARRIER
     name: "<red>Back</red>"
+  next:
+    slot: 50
+    material: ARROW
+    name: "<yellow>Next Page</yellow>"
