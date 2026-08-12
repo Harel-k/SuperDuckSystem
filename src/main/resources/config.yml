@@ -36,8 +36,8 @@ integrations:
 # permissions is optional and can contain any extra Bukkit permission nodes this rank should receive.
 rank-perks:
   default:
-    auction-slots: 3
-    order-slots: 3
+    auction-slots: 18
+    order-slots: 18
     permissions: []
 
   ranks:
@@ -45,24 +45,24 @@ rank-perks:
       enabled: true
       group-name: "duckplus"
       group-aliases: []
-      auction-slots: 27
-      order-slots: 27
+      auction-slots: 45
+      order-slots: 45
       permissions: []
 
     plusplus:
       enabled: true
       group-name: "duckplusplus"
       group-aliases: []
-      auction-slots: 47
-      order-slots: 47
+      auction-slots: 90
+      order-slots: 90
       permissions: []
 
     plusplusplus:
       enabled: true
       group-name: "duckplusplusplus"
       group-aliases: []
-      auction-slots: 47
-      order-slots: 47
+      auction-slots: 90
+      order-slots: 90
       permissions: []
 
     staff:
