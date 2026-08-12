@@ -429,6 +429,10 @@ public final class AuctionMenu {
     }
 
     private void openMyItems(Player player) {
+        openMyItems(player, 0);
+    }
+
+    private void openMyItems(Player player, int requestedPage) {
         plugin.rankPerks().apply(player);
         var listingsFuture = service.sellerListings(player.getUniqueId(), false);
         var claimsFuture = service.pendingClaims(player.getUniqueId());
@@ -441,66 +445,84 @@ public final class AuctionMenu {
                         messages.send(player, "auction.load-failed", "<red>Could not load your auctions.</red>");
                         return;
                     }
-                    renderMyItems(player, data);
+                    renderMyItems(player, data, requestedPage);
                 })
         );
     }
 
-    private void renderMyItems(Player player, MyItemsData data) {
+    private void renderMyItems(Player player, MyItemsData data, int requestedPage) {
         FileConfiguration config = plugin.configs().auctions();
         int rows = clampRows(config.getInt("my-items.rows", 6));
         int limit = service.slotLimit(player);
         int used = data.listings().size();
-        String title = config.getString("my-items.title", "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray>")
+        List<Integer> slots = contentSlots(config, "my-items.content-slots", DEFAULT_CONTENT_SLOTS);
+        int configuredPageSize = Math.max(1, config.getInt("my-items.page-size", slots.size()));
+        int pageSize = Math.min(configuredPageSize, Math.max(1, slots.size()));
+        int totalEntries = data.claims().size() + Math.max(limit, used);
+        int pages = Math.max(1, (int) Math.ceil(totalEntries / (double) pageSize));
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+
+        String title = config.getString("my-items.title", "<gold><bold>My Auctions</bold></gold> <gray>%used%/%limit%</gray> <dark_gray>•</dark_gray> <gray>%page%/%pages%</gray>")
                 .replace("%used%", Integer.toString(used))
-                .replace("%limit%", Integer.toString(limit));
+                .replace("%limit%", Integer.toString(limit))
+                .replace("%page%", Integer.toString(page + 1))
+                .replace("%pages%", Integer.toString(pages));
         DuckGui gui = new DuckGui(plugin, rows, MINI.deserialize(title));
         fill(gui, config, "my-items.filler");
-        List<Integer> slots = contentSlots(config, "my-items.content-slots", DEFAULT_CONTENT_SLOTS);
-        int index = 0;
 
-        for (AuctionClaim claim : data.claims()) {
-            if (index >= slots.size()) {
-                break;
-            }
-            int slot = slots.get(index++);
-            String reason = claim.reason() == AuctionClaim.Reason.PURCHASE ? "Purchased Item" : "Returned Item";
-            ItemStack icon = appendLore(claim.item(), List.of(
-                    "",
-                    "<green><bold>READY TO CLAIM</bold></green>",
-                    "<gray>Type:</gray> <white>" + reason + "</white>",
-                    "<yellow>Click to claim.</yellow>"
-            ));
-            gui.set(slot, new GuiButton(icon,
-                    context -> claimAndDeliver(context.player(), claim.id(), false, null)));
-        }
+        int firstEntry = page * pageSize;
+        int lastEntry = Math.min(totalEntries, firstEntry + pageSize);
+        int claimCount = data.claims().size();
+        int listingCount = data.listings().size();
 
-        for (AuctionListing listing : data.listings()) {
-            if (index >= slots.size()) {
-                break;
-            }
-            int slot = slots.get(index++);
-            ItemStack icon = appendLore(listing.item(), List.of(
-                    "",
-                    "<gray>Status:</gray> <green>LISTED</green>",
-                    "<gray>Price:</gray> <green>" + plugin.economy().formatter().format(CurrencyType.MONEY, listing.price()) + "</green>",
-                    "<yellow>Click to cancel this listing.</yellow>"
-            ));
-            gui.set(slot, new GuiButton(icon, context -> cancelListing(context.player(), listing)));
-        }
+        for (int globalIndex = firstEntry; globalIndex < lastEntry; globalIndex++) {
+            int slotIndex = globalIndex - firstEntry;
+            if (slotIndex >= slots.size()) break;
+            int slot = slots.get(slotIndex);
+            if (!validSlot(gui, slot)) continue;
 
-        int available = Math.max(0, limit - used);
-        for (int add = 0; add < available && index < slots.size(); add++) {
-            int slot = slots.get(index++);
-            if (!validSlot(gui, slot)) {
+            if (globalIndex < claimCount) {
+                AuctionClaim claim = data.claims().get(globalIndex);
+                String reason = claim.reason() == AuctionClaim.Reason.PURCHASE ? "Purchased Item" : "Returned Item";
+                ItemStack icon = appendLore(claim.item(), List.of(
+                        "",
+                        "<green><bold>READY TO CLAIM</bold></green>",
+                        "<gray>Type:</gray> <white>" + reason + "</white>",
+                        "<yellow>Click to claim.</yellow>"
+                ));
+                gui.set(slot, new GuiButton(icon,
+                        context -> claimAndDeliver(context.player(), claim.id(), false, null)));
                 continue;
             }
-            ItemStack empty = controlItem(config, "my-items.empty-slot", Material.LIME_STAINED_GLASS_PANE,
-                    "<green><bold>+ List Item</bold></green>", Map.of(
-                            "used", Integer.toString(used),
-                            "limit", Integer.toString(limit)
-                    ));
-            gui.set(slot, new GuiButton(empty, context -> beginGuiListing(context.player())));
+
+            int marketIndex = globalIndex - claimCount;
+            if (marketIndex < listingCount) {
+                AuctionListing listing = data.listings().get(marketIndex);
+                ItemStack icon = appendLore(listing.item(), List.of(
+                        "",
+                        "<gray>Status:</gray> <green>LISTED</green>",
+                        "<gray>Price:</gray> <green>" + plugin.economy().formatter().format(CurrencyType.MONEY, listing.price()) + "</green>",
+                        "<yellow>Click to cancel this listing.</yellow>"
+                ));
+                gui.set(slot, new GuiButton(icon, context -> cancelListing(context.player(), listing)));
+                continue;
+            }
+
+            if (marketIndex < limit) {
+                ItemStack empty = controlItem(config, "my-items.empty-slot", Material.LIME_STAINED_GLASS_PANE,
+                        "<green><bold>+ List Item</bold></green>", Map.of(
+                                "used", Integer.toString(used),
+                                "limit", Integer.toString(limit)
+                        ));
+                gui.set(slot, new GuiButton(empty, context -> beginGuiListing(context.player())));
+            }
+        }
+
+        int previousSlot = config.getInt("my-items.previous.slot", 48);
+        if (page > 0 && validSlot(gui, previousSlot)) {
+            ItemStack previous = controlItem(config, "my-items.previous", Material.ARROW, "<yellow>Previous Page</yellow>");
+            gui.set(previousSlot, new GuiButton(previous,
+                    context -> openMyItems(context.player(), page - 1)));
         }
 
         int backSlot = config.getInt("my-items.back.slot", 49);
@@ -508,6 +530,13 @@ public final class AuctionMenu {
             ItemStack back = controlItem(config, "my-items.back", Material.BARRIER, "<red>Back</red>");
             gui.set(backSlot, new GuiButton(back,
                     context -> open(context.player(), "", AuctionSort.NEWEST, 0)));
+        }
+
+        int nextSlot = config.getInt("my-items.next.slot", 50);
+        if (page + 1 < pages && validSlot(gui, nextSlot)) {
+            ItemStack next = controlItem(config, "my-items.next", Material.ARROW, "<yellow>Next Page</yellow>");
+            gui.set(nextSlot, new GuiButton(next,
+                    context -> openMyItems(context.player(), page + 1)));
         }
         gui.open(player);
     }
