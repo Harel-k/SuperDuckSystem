@@ -483,6 +483,10 @@ public final class OrderMenu {
     }
 
     private void openMyOrders(Player player) {
+        openMyOrders(player, 0);
+    }
+
+    private void openMyOrders(Player player, int requestedPage) {
         plugin.rankPerks().apply(player);
         var ordersFuture = service.buyerOrders(player.getUniqueId());
         var claimsFuture = service.pendingClaims(player.getUniqueId());
@@ -495,74 +499,95 @@ public final class OrderMenu {
                         messages.send(player, "order.load-failed", "<red>Could not load your orders.</red>");
                         return;
                     }
-                    renderMyOrders(player, data);
+                    renderMyOrders(player, data, requestedPage);
                 })
         );
     }
 
-    private void renderMyOrders(Player player, MyOrdersData data) {
+    private void renderMyOrders(Player player, MyOrdersData data, int requestedPage) {
         FileConfiguration config = plugin.configs().orders();
         int rows = clampRows(config.getInt("my-orders.rows", 6));
         int limit = service.slotLimit(player);
         long usedLong = data.orders().stream().filter(order -> order.status() == OrderStatus.OPEN).count();
         int used = (int) Math.min(Integer.MAX_VALUE, usedLong);
-        String title = config.getString("my-orders.title", "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray>")
+        int availableSlots = Math.max(0, limit - used);
+        List<Integer> slots = contentSlots(config, "my-orders.content-slots", DEFAULT_CONTENT_SLOTS);
+        int configuredPageSize = Math.max(1, config.getInt("my-orders.page-size", slots.size()));
+        int pageSize = Math.min(configuredPageSize, Math.max(1, slots.size()));
+        int totalEntries = data.claims().size() + data.orders().size() + availableSlots;
+        int pages = Math.max(1, (int) Math.ceil(totalEntries / (double) pageSize));
+        int page = Math.max(0, Math.min(requestedPage, pages - 1));
+
+        String title = config.getString("my-orders.title", "<gold><bold>My Orders</bold></gold> <gray>%used%/%limit%</gray> <dark_gray>•</dark_gray> <gray>%page%/%pages%</gray>")
                 .replace("%used%", Integer.toString(used))
-                .replace("%limit%", Integer.toString(limit));
+                .replace("%limit%", Integer.toString(limit))
+                .replace("%page%", Integer.toString(page + 1))
+                .replace("%pages%", Integer.toString(pages));
         DuckGui gui = new DuckGui(plugin, rows, MINI.deserialize(title));
         fill(gui, config, "my-orders.filler");
-        List<Integer> slots = contentSlots(config, "my-orders.content-slots", DEFAULT_CONTENT_SLOTS);
-        int index = 0;
 
-        for (OrderClaim claim : data.claims()) {
-            if (index >= slots.size()) {
-                break;
-            }
-            int slot = slots.get(index++);
-            ItemStack icon = appendLore(claim.item(), List.of(
-                    "",
-                    "<green><bold>READY TO CLAIM</bold></green>",
-                    "<gray>Amount:</gray> <white>" + claim.amount() + "</white>",
-                    "<yellow>Click to claim.</yellow>"
-            ));
-            gui.set(slot, new GuiButton(icon, context -> claimItems(context.player(), claim)));
-        }
+        int firstEntry = page * pageSize;
+        int lastEntry = Math.min(totalEntries, firstEntry + pageSize);
+        int claimCount = data.claims().size();
+        int orderCount = data.orders().size();
 
-        for (OrderListing order : data.orders()) {
-            if (index >= slots.size()) {
-                break;
-            }
-            int slot = slots.get(index++);
-            List<String> lore = new ArrayList<>();
-            lore.add("");
-            lore.add("<gray>Status:</gray> <white>" + order.status().name() + "</white>");
-            lore.add("<gray>Remaining:</gray> <white>" + order.remainingAmount() + " / " + order.totalAmount() + "</white>");
-            lore.add("<gray>Price each:</gray> <green>" + money(order.priceEach()) + "</green>");
-            if (order.status() == OrderStatus.OPEN) {
-                lore.add("<gray>Escrow remaining:</gray> <green>" + money(order.escrowRemaining()) + "</green>");
-                lore.add("");
-                lore.add("<yellow>Click to cancel and refund unused escrow.</yellow>");
-            }
-            ItemStack icon = appendLore(order.item(), lore);
-            if (order.status() == OrderStatus.OPEN) {
-                gui.set(slot, new GuiButton(icon, context -> cancelOrder(context.player(), order)));
-            } else {
-                gui.setDisplay(slot, icon);
-            }
-        }
+        for (int globalIndex = firstEntry; globalIndex < lastEntry; globalIndex++) {
+            int slotIndex = globalIndex - firstEntry;
+            if (slotIndex >= slots.size()) break;
+            int slot = slots.get(slotIndex);
+            if (!validSlot(gui, slot)) continue;
 
-        int availableSlots = Math.max(0, limit - used);
-        for (int add = 0; add < availableSlots && index < slots.size(); add++) {
-            int slot = slots.get(index++);
-            if (!validSlot(gui, slot)) {
+            if (globalIndex < claimCount) {
+                OrderClaim claim = data.claims().get(globalIndex);
+                ItemStack icon = appendLore(claim.item(), List.of(
+                        "",
+                        "<green><bold>READY TO CLAIM</bold></green>",
+                        "<gray>Amount:</gray> <white>" + claim.amount() + "</white>",
+                        "<yellow>Click to claim.</yellow>"
+                ));
+                gui.set(slot, new GuiButton(icon, context -> claimItems(context.player(), claim)));
                 continue;
             }
-            ItemStack empty = controlItem(config, "my-orders.empty-slot", Material.LIME_STAINED_GLASS_PANE,
-                    "<green><bold>+ Create Order</bold></green>", Map.of(
-                            "used", Integer.toString(used),
-                            "limit", Integer.toString(limit)
-                    ));
-            gui.set(slot, new GuiButton(empty, context -> beginCreate(context.player())));
+
+            int orderIndex = globalIndex - claimCount;
+            if (orderIndex < orderCount) {
+                OrderListing order = data.orders().get(orderIndex);
+                List<String> lore = new ArrayList<>();
+                lore.add("");
+                lore.add("<gray>Status:</gray> <white>" + order.status().name() + "</white>");
+                lore.add("<gray>Remaining:</gray> <white>" + order.remainingAmount() + " / " + order.totalAmount() + "</white>");
+                lore.add("<gray>Price each:</gray> <green>" + money(order.priceEach()) + "</green>");
+                if (order.status() == OrderStatus.OPEN) {
+                    lore.add("<gray>Escrow remaining:</gray> <green>" + money(order.escrowRemaining()) + "</green>");
+                    lore.add("");
+                    lore.add("<yellow>Click to cancel and refund unused escrow.</yellow>");
+                }
+                ItemStack icon = appendLore(order.item(), lore);
+                if (order.status() == OrderStatus.OPEN) {
+                    gui.set(slot, new GuiButton(icon, context -> cancelOrder(context.player(), order)));
+                } else {
+                    gui.setDisplay(slot, icon);
+                }
+                continue;
+            }
+
+            int emptyIndex = orderIndex - orderCount;
+            if (emptyIndex < availableSlots) {
+                ItemStack empty = controlItem(config, "my-orders.empty-slot", Material.LIME_STAINED_GLASS_PANE,
+                        "<green><bold>+ Create Order</bold></green>", Map.of(
+                                "used", Integer.toString(used),
+                                "limit", Integer.toString(limit)
+                        ));
+                gui.set(slot, new GuiButton(empty, context -> beginCreate(context.player())));
+            }
+        }
+
+        int previousSlot = config.getInt("my-orders.previous.slot", 48);
+        if (page > 0 && validSlot(gui, previousSlot)) {
+            gui.set(previousSlot, new GuiButton(
+                    controlItem(config, "my-orders.previous", Material.ARROW, "<yellow>Previous Page</yellow>"),
+                    context -> openMyOrders(context.player(), page - 1)
+            ));
         }
 
         int backSlot = config.getInt("my-orders.back.slot", 49);
@@ -570,6 +595,14 @@ public final class OrderMenu {
             gui.set(backSlot, new GuiButton(
                     controlItem(config, "my-orders.back", Material.BARRIER, "<red>Back</red>"),
                     context -> open(context.player(), "", OrderSort.NEWEST, 0)
+            ));
+        }
+
+        int nextSlot = config.getInt("my-orders.next.slot", 50);
+        if (page + 1 < pages && validSlot(gui, nextSlot)) {
+            gui.set(nextSlot, new GuiButton(
+                    controlItem(config, "my-orders.next", Material.ARROW, "<yellow>Next Page</yellow>"),
+                    context -> openMyOrders(context.player(), page + 1)
             ));
         }
         gui.open(player);
