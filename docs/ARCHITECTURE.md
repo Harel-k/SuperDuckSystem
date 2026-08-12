@@ -12,6 +12,7 @@ SuperDuckSystem is the custom gameplay layer for QDucks SMP. Mature infrastructu
 6. Optional integrations must fail gracefully when the external plugin is absent.
 7. Java players use inventory GUIs; Bedrock players can receive Floodgate native forms when a native form provides a better experience.
 8. Market systems must be designed for restart safety, duplicate-click safety and full-inventory/disconnect cases.
+9. Rank config IDs are independent from LuckPerms group names. Group mapping, aliases, market slot counts and optional extra permission perks are configuration, not hardcoded server assumptions.
 
 ## Planned modules
 
@@ -27,4 +28,6 @@ SuperDuckSystem is the custom gameplay layer for QDucks SMP. Mature infrastructu
 
 ## Duck tools
 
-Duck Pickaxe and Duck Shovel use a configurable 3x3 face-oriented area (9 blocks at depth 1 by default). Duck Axe uses bounded whole-tree vein felling.
+Duck Pickaxe and Duck Shovel use a configurable face-oriented area with QDucks SMP defaulting to 9x9 at depth 1. Odd widths/heights from 1-9 and depth up to 3 are supported with a configurable extra-block safety cap. Duck Axe uses bounded whole-tree connected vein felling with configurable block/radius caps, diagonal connectivity, wood blocks and Nether stem/hypha support.
+
+Every extra block is broken through the normal player block-break path so protection and logging plugins can evaluate each block independently.
