@@ -31,8 +31,8 @@ public final class RankPerkService {
         ConfigurationSection fallback = plugin.getConfig().getConfigurationSection("rank-perks.default");
         ConfigurationSection rank = findRank(primaryGroup);
 
-        int defaultAuctionSlots = getNonNegative(fallback, "auction-slots", 3);
-        int defaultOrderSlots = getNonNegative(fallback, "order-slots", 3);
+        int defaultAuctionSlots = getNonNegative(fallback, "auction-slots", 18);
+        int defaultOrderSlots = getNonNegative(fallback, "order-slots", 18);
         int auctionSlots = getNonNegative(rank, "auction-slots", defaultAuctionSlots);
         int orderSlots = getNonNegative(rank, "order-slots", defaultOrderSlots);
 
