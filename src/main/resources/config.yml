@@ -31,9 +31,12 @@ integrations:
   luckperms: true
   vaultunlocked: true
 
+# Global SMP combat tag. This is separate from DuckyPVP's arena lock.
 combat:
   tag-seconds: 20
   bypass-permission: superduck.combat.bypass
+  kill-on-logout: true
+  broadcast-combat-log: true
   blocked-commands:
     - spawn
     - rtp
@@ -44,9 +47,11 @@ combat:
     - tpa
     - tpahere
     - tpaccept
-  actionbar: "&c&lCOMBAT &8» &f%time%s &7• &cDo not disconnect or escape"
+  actionbar: "&c&lCOMBAT &8» &f%time%s &7• &cDo not disconnect or teleport"
   blocked-command-message: "&c&lCOMBAT &8» &7You cannot use &f/%command% &7for another &c%time%s&7."
+  blocked-teleport-message: "&c&lCOMBAT &8» &7You cannot teleport for another &c%time%s&7."
   released-message: "&a&lCOMBAT &8» &7You are no longer in combat."
+  combat-log-broadcast: "&c&lCOMBAT &8» &f%player% &7logged out during combat and died."
 
 # Rank IDs below are internal config IDs. They do NOT need to match your LuckPerms group names.
 # Change group-name to whatever the real primary LuckPerms group is on your server.
