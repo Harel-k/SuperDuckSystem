@@ -25,7 +25,9 @@ public final class CombatService {
     private String bypassPermission;
     private String actionbar;
     private String blockedMessage;
+    private String blockedTeleportMessage;
     private String releasedMessage;
+    private boolean killOnLogout;
 
     public CombatService(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -56,9 +58,11 @@ public final class CombatService {
     private void reloadSettings() {
         tagMillis = Math.max(1L, plugin.getConfig().getLong("combat.tag-seconds", 20L)) * 1000L;
         bypassPermission = plugin.getConfig().getString("combat.bypass-permission", "superduck.combat.bypass");
-        actionbar = plugin.getConfig().getString("combat.actionbar", "&c&lCOMBAT &8» &f%time%s &7• &cDo not disconnect or escape");
+        actionbar = plugin.getConfig().getString("combat.actionbar", "&c&lCOMBAT &8» &f%time%s &7• &cDo not disconnect or teleport");
         blockedMessage = plugin.getConfig().getString("combat.blocked-command-message", "&c&lCOMBAT &8» &7You cannot use &f/%command% &7for another &c%time%s&7.");
+        blockedTeleportMessage = plugin.getConfig().getString("combat.blocked-teleport-message", "&c&lCOMBAT &8» &7You cannot teleport for another &c%time%s&7.");
         releasedMessage = plugin.getConfig().getString("combat.released-message", "&a&lCOMBAT &8» &7You are no longer in combat.");
+        killOnLogout = plugin.getConfig().getBoolean("combat.kill-on-logout", true);
 
         blockedCommands.clear();
         for (String command : plugin.getConfig().getStringList("combat.blocked-commands")) {
@@ -121,6 +125,18 @@ public final class CombatService {
     public void sendBlocked(Player player, String command) {
         String text = replace(blockedMessage, player).replace("%command%", command);
         player.sendMessage(org.bukkit.ChatColor.translateAlternateColorCodes('&', text));
+    }
+
+    public void sendBlockedTeleport(Player player) {
+        if (blockedTeleportMessage != null && !blockedTeleportMessage.isBlank()) {
+            player.sendActionBar(LEGACY.deserialize(replace(blockedTeleportMessage, player)));
+        }
+    }
+
+    public void punishCombatLog(Player player) {
+        if (killOnLogout && player != null && !player.isDead() && player.getHealth() > 0.0) {
+            player.setHealth(0.0);
+        }
     }
 
     private void tick() {
