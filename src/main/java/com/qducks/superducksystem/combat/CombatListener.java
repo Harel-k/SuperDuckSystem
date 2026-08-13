@@ -10,6 +10,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.projectiles.ProjectileSource;
 
 public final class CombatListener implements Listener {
@@ -32,6 +33,13 @@ public final class CombatListener implements Listener {
         if (!combat.shouldBlockCommand(event.getPlayer(), event.getMessage())) return;
         event.setCancelled(true);
         combat.sendBlocked(event.getPlayer(), combat.commandLabel(event.getMessage()));
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onTeleport(PlayerTeleportEvent event) {
+        if (!combat.isTagged(event.getPlayer())) return;
+        event.setCancelled(true);
+        combat.sendBlockedTeleport(event.getPlayer());
     }
 
     @EventHandler
