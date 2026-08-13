@@ -41,6 +41,9 @@ public final class CombatListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        if (combat.isTagged(event.getPlayer())) {
+            combat.punishCombatLog(event.getPlayer());
+        }
         combat.clear(event.getPlayer(), false);
     }
 
