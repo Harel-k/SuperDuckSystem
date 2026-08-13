@@ -107,6 +107,7 @@ permissions:
   superduck.leaderboard: {default: true}
   superduck.daily: {default: true}
   superduck.rewards: {default: true}
+  superduck.combat.bypass: {default: op}
   superduck.admin.keys: {default: op}
   superduck.admin.items: {default: op}
   superduck.admin.economy: {default: op}

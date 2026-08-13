@@ -14,6 +14,7 @@ modules:
   custom-tools: true
   stats: true
   rewards: true
+  combat: true
 
 database:
   type: SQLITE
@@ -29,6 +30,23 @@ integrations:
   floodgate: true
   luckperms: true
   vaultunlocked: true
+
+combat:
+  tag-seconds: 20
+  bypass-permission: superduck.combat.bypass
+  blocked-commands:
+    - spawn
+    - rtp
+    - wild
+    - home
+    - back
+    - warp
+    - tpa
+    - tpahere
+    - tpaccept
+  actionbar: "&c&lCOMBAT &8» &f%time%s &7• &cDo not disconnect or escape"
+  blocked-command-message: "&c&lCOMBAT &8» &7You cannot use &f/%command% &7for another &c%time%s&7."
+  released-message: "&a&lCOMBAT &8» &7You are no longer in combat."
 
 # Rank IDs below are internal config IDs. They do NOT need to match your LuckPerms group names.
 # Change group-name to whatever the real primary LuckPerms group is on your server.

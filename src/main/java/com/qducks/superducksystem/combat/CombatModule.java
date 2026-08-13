@@ -8,9 +8,9 @@ public final class CombatModule implements SuperDuckModule {
     private final CombatService combat;
     private CombatListener listener;
 
-    public CombatModule(SuperDuckSystem plugin, CombatService combat) {
+    public CombatModule(SuperDuckSystem plugin) {
         this.plugin = plugin;
-        this.combat = combat;
+        this.combat = new CombatService(plugin);
     }
 
     @Override

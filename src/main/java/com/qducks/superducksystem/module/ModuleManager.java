@@ -2,6 +2,7 @@ package com.qducks.superducksystem.module;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.auction.AuctionModule;
+import com.qducks.superducksystem.combat.CombatModule;
 import com.qducks.superducksystem.crate.CrateModule;
 import com.qducks.superducksystem.economy.EconomyModule;
 import com.qducks.superducksystem.order.OrderModule;
@@ -33,6 +34,7 @@ public final class ModuleManager {
         register(new CustomToolsModule(plugin));
         register(new StatsModule(plugin));
         register(new RewardsModule(plugin, plugin.rewards()));
+        register(new CombatModule(plugin));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
