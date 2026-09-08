@@ -13,6 +13,11 @@ commands:
     usage: /superduck
     aliases: [sds]
     permission: superduck.command
+  maintenancemode:
+    description: Toggle full QDucks server maintenance mode
+    usage: /maintenancemode [on|off|status|setroom|reload]
+    aliases: [mm, maintancemode]
+    permission: superduck.admin.maintenancemode
   balance:
     description: View your money balance
     usage: /balance [player]
@@ -108,6 +113,9 @@ permissions:
   superduck.daily: {default: true}
   superduck.rewards: {default: true}
   superduck.combat.bypass: {default: op}
+  superduck.maintenance.whitelist: {default: op}
+  superduck.maintenance.bypass: {default: op}
+  superduck.admin.maintenancemode: {default: op}
   superduck.admin.keys: {default: op}
   superduck.admin.items: {default: op}
   superduck.admin.economy: {default: op}
