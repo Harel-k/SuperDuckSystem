@@ -44,6 +44,17 @@ allowed-commands:
 restrictions:
   force-adventure: true
 
+ui:
+  bossbar:
+    enabled: true
+    text: "<gold><bold>Server in Maintance</bold></gold>"
+    color: YELLOW
+    overlay: PROGRESS
+
+  actionbar:
+    enabled: true
+    text: "<yellow><bold>Please Be Patient</bold></yellow>"
+
 messages:
   join: "<yellow>The server is currently in maintenance mode. You can stay here while we work on it.</yellow>"
   command-blocked: "<red>You cannot use that command while the server is in maintenance mode.</red>"
