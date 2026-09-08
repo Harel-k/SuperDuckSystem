@@ -1,6 +1,9 @@
 package com.qducks.superducksystem.maintenance;
 
 import com.qducks.superducksystem.SuperDuckSystem;
+import net.kyori.adventure.bossbar.BossBar;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -11,6 +14,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -20,6 +24,8 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class MaintenanceService {
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
     private final SuperDuckSystem plugin;
 
     private final NamespacedKey previousGameModeKey;
@@ -33,6 +39,7 @@ public final class MaintenanceService {
     private final Set<String> whitelistedPlayers = new HashSet<>();
     private final Set<String> allowedCommands = new HashSet<>();
     private final Set<UUID> internalTeleports = new HashSet<>();
+    private final Set<UUID> bossBarViewers = new HashSet<>();
     private final Map<UUID, PermissionAttachment> maintenanceAttachments = new HashMap<>();
 
     private boolean active;
@@ -43,6 +50,12 @@ public final class MaintenanceService {
     private String maintenanceMessage;
     private String title;
     private String subtitle;
+
+    private boolean bossbarEnabled;
+    private boolean actionbarEnabled;
+    private String actionbarText;
+    private BossBar maintenanceBossBar;
+    private BukkitTask uiTask;
 
     public MaintenanceService(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -57,10 +70,29 @@ public final class MaintenanceService {
 
     public void start() {
         reload();
+        startUiTask();
         reconcileOnlinePlayers();
     }
 
+    public void stop() {
+        if (uiTask != null) {
+            uiTask.cancel();
+            uiTask = null;
+        }
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            hideMaintenanceUi(player);
+            removeMaintenanceBypasses(player);
+        }
+
+        bossBarViewers.clear();
+        internalTeleports.clear();
+        maintenanceAttachments.clear();
+    }
+
     public void reload() {
+        hideCurrentBossBarFromAll();
+
         FileConfiguration config = plugin.configs().maintenance();
         active = config.getBoolean("active", false);
         whitelistPermission = config.getString("whitelist.permission", "superduck.maintenance.whitelist");
@@ -72,6 +104,22 @@ public final class MaintenanceService {
                 "<yellow>The server is currently in maintenance mode.</yellow>");
         title = config.getString("messages.title", "<gold><bold>MAINTENANCE</bold></gold>");
         subtitle = config.getString("messages.subtitle", "<gray>Please wait while we work on the server.</gray>");
+
+        bossbarEnabled = config.getBoolean("ui.bossbar.enabled", true);
+        actionbarEnabled = config.getBoolean("ui.actionbar.enabled", true);
+        actionbarText = config.getString("ui.actionbar.text",
+                "<yellow><bold>Please Be Patient</bold></yellow>");
+
+        String bossbarText = config.getString("ui.bossbar.text",
+                "<gold><bold>Server in Maintance</bold></gold>");
+        BossBar.Color bossbarColor = parseBossBarColor(config.getString("ui.bossbar.color", "YELLOW"));
+        BossBar.Overlay bossbarOverlay = parseBossBarOverlay(config.getString("ui.bossbar.overlay", "PROGRESS"));
+        maintenanceBossBar = BossBar.bossBar(
+                MINI_MESSAGE.deserialize(bossbarText),
+                1.0f,
+                bossbarColor,
+                bossbarOverlay
+        );
 
         whitelistedPlayers.clear();
         for (String entry : config.getStringList("whitelist.players")) {
@@ -102,14 +150,15 @@ public final class MaintenanceService {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (!isWhitelisted(player)) apply(player, true);
             }
-            Bukkit.broadcast(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                    .deserialize("<gold><bold>QDucks maintenance mode enabled.</bold></gold>"));
+            Bukkit.broadcast(MINI_MESSAGE.deserialize(
+                    "<gold><bold>QDucks maintenance mode enabled.</bold></gold>"));
         } else {
             for (Player player : Bukkit.getOnlinePlayers()) {
+                hideMaintenanceUi(player);
                 restorePlayer(player);
             }
-            Bukkit.broadcast(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                    .deserialize("<green><bold>QDucks maintenance mode disabled.</bold></green>"));
+            Bukkit.broadcast(MINI_MESSAGE.deserialize(
+                    "<green><bold>QDucks maintenance mode disabled.</bold></green>"));
         }
     }
 
@@ -140,6 +189,7 @@ public final class MaintenanceService {
     public void handleJoin(Player player) {
         if (active) {
             if (isWhitelisted(player)) {
+                hideMaintenanceUi(player);
                 restorePlayer(player);
             } else {
                 Bukkit.getScheduler().runTask(plugin, () -> {
@@ -147,13 +197,17 @@ public final class MaintenanceService {
                 });
             }
         } else {
+            hideMaintenanceUi(player);
             restorePlayer(player);
         }
     }
 
     public void handleQuit(Player player) {
         if (player == null) return;
+
+        hideMaintenanceUi(player);
         internalTeleports.remove(player.getUniqueId());
+
         PermissionAttachment attachment = maintenanceAttachments.remove(player.getUniqueId());
         if (attachment != null) {
             try {
@@ -167,8 +221,8 @@ public final class MaintenanceService {
     public void apply(Player player, boolean teleport) {
         if (!isRestricted(player)) return;
 
-        // Save only once. If the player reconnects or the server restarts during maintenance,
-        // this keeps the real pre-maintenance position instead of overwriting it with the room.
+        // Save only once. Reconnects and restarts during maintenance must never replace
+        // the real pre-maintenance return point with the maintenance-room position.
         savePreviousState(player);
         addMaintenanceBypasses(player);
 
@@ -194,13 +248,16 @@ public final class MaintenanceService {
             }
         }
 
+        showMaintenanceUi(player);
+
         if (title != null && !title.isBlank()) {
             String sub = subtitle == null ? "" : subtitle;
             player.showTitle(net.kyori.adventure.title.Title.title(
-                    net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(title),
-                    net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(sub)
+                    MINI_MESSAGE.deserialize(title),
+                    MINI_MESSAGE.deserialize(sub)
             ));
         }
+
         if (maintenanceMessage != null && !maintenanceMessage.isBlank()) {
             player.sendRichMessage(maintenanceMessage);
         }
@@ -209,8 +266,10 @@ public final class MaintenanceService {
     public void restorePlayer(Player player) {
         if (player == null) return;
 
-        // Keep temporary combat bypasses during the restore teleport so DuckyPVP or
-        // global combat cannot block the player from returning to their saved location.
+        hideMaintenanceUi(player);
+
+        // Keep temporary combat bypasses during the return teleport so DuckyPVP or
+        // global combat cannot block restoration.
         addMaintenanceBypasses(player);
 
         PersistentDataContainer data = player.getPersistentDataContainer();
@@ -258,6 +317,7 @@ public final class MaintenanceService {
 
     public boolean setRoom(Location location) {
         if (location == null || location.getWorld() == null) return false;
+
         FileConfiguration config = plugin.configs().maintenance();
         config.set("room.world", location.getWorld().getName());
         config.set("room.x", location.getX());
@@ -273,10 +333,12 @@ public final class MaintenanceService {
         FileConfiguration config = plugin.configs().maintenance();
         String worldName = config.getString("room.world", "spawn");
         World world = Bukkit.getWorld(worldName);
+
         if (world == null) {
             plugin.getLogger().warning("Maintenance room world does not exist: " + worldName);
             return null;
         }
+
         return new Location(
                 world,
                 config.getDouble("room.x", 0.5),
@@ -297,9 +359,70 @@ public final class MaintenanceService {
 
     public void reconcileOnlinePlayers() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (isRestricted(player)) apply(player, active);
-            else restorePlayer(player);
+            if (isRestricted(player)) {
+                apply(player, active);
+            } else {
+                hideMaintenanceUi(player);
+                restorePlayer(player);
+            }
         }
+    }
+
+    private void startUiTask() {
+        if (uiTask != null) uiTask.cancel();
+
+        uiTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (isRestricted(player)) {
+                    showMaintenanceUi(player);
+                } else {
+                    hideMaintenanceUi(player);
+                }
+            }
+        }, 1L, 20L);
+    }
+
+    private void showMaintenanceUi(Player player) {
+        if (player == null || !player.isOnline()) return;
+
+        if (bossbarEnabled && maintenanceBossBar != null) {
+            if (bossBarViewers.add(player.getUniqueId())) {
+                player.showBossBar(maintenanceBossBar);
+            }
+        } else {
+            hideBossBar(player);
+        }
+
+        if (actionbarEnabled && actionbarText != null && !actionbarText.isBlank()) {
+            player.sendActionBar(MINI_MESSAGE.deserialize(actionbarText));
+        }
+    }
+
+    private void hideMaintenanceUi(Player player) {
+        if (player == null) return;
+
+        hideBossBar(player);
+
+        if (actionbarEnabled && player.isOnline()) {
+            player.sendActionBar(Component.empty());
+        }
+    }
+
+    private void hideBossBar(Player player) {
+        if (maintenanceBossBar != null && bossBarViewers.remove(player.getUniqueId())) {
+            player.hideBossBar(maintenanceBossBar);
+        }
+    }
+
+    private void hideCurrentBossBarFromAll() {
+        if (maintenanceBossBar != null) {
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (bossBarViewers.contains(player.getUniqueId())) {
+                    player.hideBossBar(maintenanceBossBar);
+                }
+            }
+        }
+        bossBarViewers.clear();
     }
 
     private void savePreviousState(Player player) {
@@ -312,6 +435,7 @@ public final class MaintenanceService {
         if (!data.has(previousWorldKey, PersistentDataType.STRING)) {
             Location location = player.getLocation();
             World world = location.getWorld();
+
             if (world != null) {
                 data.set(previousWorldKey, PersistentDataType.STRING, world.getName());
                 data.set(previousXKey, PersistentDataType.DOUBLE, location.getX());
@@ -341,7 +465,14 @@ public final class MaintenanceService {
             return null;
         }
 
-        return new Location(world, x, y, z, yaw == null ? 0.0f : yaw, pitch == null ? 0.0f : pitch);
+        return new Location(
+                world,
+                x,
+                y,
+                z,
+                yaw == null ? 0.0f : yaw,
+                pitch == null ? 0.0f : pitch
+        );
     }
 
     private void clearPreviousLocation(PersistentDataContainer data) {
@@ -355,6 +486,7 @@ public final class MaintenanceService {
 
     private void addMaintenanceBypasses(Player player) {
         if (maintenanceAttachments.containsKey(player.getUniqueId())) return;
+
         PermissionAttachment attachment = player.addAttachment(plugin);
         attachment.setPermission("superduck.combat.bypass", true);
         attachment.setPermission("duckypvp.combat.bypass", true);
@@ -365,18 +497,39 @@ public final class MaintenanceService {
     private void removeMaintenanceBypasses(Player player) {
         PermissionAttachment attachment = maintenanceAttachments.remove(player.getUniqueId());
         if (attachment == null) return;
+
         try {
             player.removeAttachment(attachment);
         } catch (IllegalArgumentException ignored) {
             // The attachment can already be gone during plugin shutdown/reload.
         }
+
         player.recalculatePermissions();
+    }
+
+    private static BossBar.Color parseBossBarColor(String raw) {
+        if (raw == null) return BossBar.Color.YELLOW;
+        try {
+            return BossBar.Color.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return BossBar.Color.YELLOW;
+        }
+    }
+
+    private static BossBar.Overlay parseBossBarOverlay(String raw) {
+        if (raw == null) return BossBar.Overlay.PROGRESS;
+        try {
+            return BossBar.Overlay.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            return BossBar.Overlay.PROGRESS;
+        }
     }
 
     private static String normalizeCommand(String raw) {
         String command = raw.trim().toLowerCase(Locale.ROOT);
         if (command.startsWith("/")) command = command.substring(1);
         if (command.isBlank()) return "";
+
         command = command.split("\\s+", 2)[0];
         int namespace = command.lastIndexOf(':');
         return namespace >= 0 ? command.substring(namespace + 1) : command;
