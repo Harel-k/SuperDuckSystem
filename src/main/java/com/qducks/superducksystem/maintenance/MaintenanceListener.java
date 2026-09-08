@@ -22,6 +22,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.projectiles.ProjectileSource;
@@ -36,6 +37,11 @@ public final class MaintenanceListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         maintenance.handleJoin(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onQuit(PlayerQuitEvent event) {
+        maintenance.handleQuit(event.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
