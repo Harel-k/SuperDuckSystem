@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.IOException;
 
 public final class ConfigManager {
     private final SuperDuckSystem plugin;
@@ -20,6 +21,8 @@ public final class ConfigManager {
     private FileConfiguration customItems;
     private FileConfiguration stats;
     private FileConfiguration rewards;
+    private FileConfiguration maintenance;
+    private File maintenanceFile;
 
     public ConfigManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -39,6 +42,7 @@ public final class ConfigManager {
         saveResourceIfMissing("custom-items.yml");
         saveResourceIfMissing("stats.yml");
         saveResourceIfMissing("rewards.yml");
+        saveResourceIfMissing("maintenance.yml");
         reloadSecondaryFiles();
     }
 
@@ -60,6 +64,16 @@ public final class ConfigManager {
     public FileConfiguration customItems() { return customItems; }
     public FileConfiguration stats() { return stats; }
     public FileConfiguration rewards() { return rewards; }
+    public FileConfiguration maintenance() { return maintenance; }
+
+    public void saveMaintenance() {
+        if (maintenance == null || maintenanceFile == null) return;
+        try {
+            maintenance.save(maintenanceFile);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to save maintenance.yml", exception);
+        }
+    }
 
     public String serverName() {
         return main().getString("server.name", "Server");
@@ -78,6 +92,8 @@ public final class ConfigManager {
         customItems = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "custom-items.yml"));
         stats = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "stats.yml"));
         rewards = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rewards.yml"));
+        maintenanceFile = new File(plugin.getDataFolder(), "maintenance.yml");
+        maintenance = YamlConfiguration.loadConfiguration(maintenanceFile);
     }
 
     private void saveResourceIfMissing(String name) {
