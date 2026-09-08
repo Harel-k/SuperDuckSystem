@@ -9,6 +9,7 @@ import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachment;
+import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.HashMap;
@@ -20,7 +21,15 @@ import java.util.UUID;
 
 public final class MaintenanceService {
     private final SuperDuckSystem plugin;
+
     private final NamespacedKey previousGameModeKey;
+    private final NamespacedKey previousWorldKey;
+    private final NamespacedKey previousXKey;
+    private final NamespacedKey previousYKey;
+    private final NamespacedKey previousZKey;
+    private final NamespacedKey previousYawKey;
+    private final NamespacedKey previousPitchKey;
+
     private final Set<String> whitelistedPlayers = new HashSet<>();
     private final Set<String> allowedCommands = new HashSet<>();
     private final Set<UUID> internalTeleports = new HashSet<>();
@@ -38,6 +47,12 @@ public final class MaintenanceService {
     public MaintenanceService(SuperDuckSystem plugin) {
         this.plugin = plugin;
         this.previousGameModeKey = new NamespacedKey(plugin, "maintenance_previous_gamemode");
+        this.previousWorldKey = new NamespacedKey(plugin, "maintenance_previous_world");
+        this.previousXKey = new NamespacedKey(plugin, "maintenance_previous_x");
+        this.previousYKey = new NamespacedKey(plugin, "maintenance_previous_y");
+        this.previousZKey = new NamespacedKey(plugin, "maintenance_previous_z");
+        this.previousYawKey = new NamespacedKey(plugin, "maintenance_previous_yaw");
+        this.previousPitchKey = new NamespacedKey(plugin, "maintenance_previous_pitch");
     }
 
     public void start() {
@@ -152,13 +167,13 @@ public final class MaintenanceService {
     public void apply(Player player, boolean teleport) {
         if (!isRestricted(player)) return;
 
+        // Save only once. If the player reconnects or the server restarts during maintenance,
+        // this keeps the real pre-maintenance position instead of overwriting it with the room.
+        savePreviousState(player);
         addMaintenanceBypasses(player);
 
-        if (forceAdventure) {
-            savePreviousGameMode(player);
-            if (player.getGameMode() != GameMode.ADVENTURE) {
-                player.setGameMode(GameMode.ADVENTURE);
-            }
+        if (forceAdventure && player.getGameMode() != GameMode.ADVENTURE) {
+            player.setGameMode(GameMode.ADVENTURE);
         }
 
         player.setFireTicks(0);
@@ -193,18 +208,42 @@ public final class MaintenanceService {
 
     public void restorePlayer(Player player) {
         if (player == null) return;
-        removeMaintenanceBypasses(player);
 
-        String stored = player.getPersistentDataContainer().get(previousGameModeKey, PersistentDataType.STRING);
-        if (stored == null) return;
+        // Keep temporary combat bypasses during the restore teleport so DuckyPVP or
+        // global combat cannot block the player from returning to their saved location.
+        addMaintenanceBypasses(player);
 
-        player.getPersistentDataContainer().remove(previousGameModeKey);
-        try {
-            GameMode previous = GameMode.valueOf(stored);
-            if (player.getGameMode() != previous) player.setGameMode(previous);
-        } catch (IllegalArgumentException ignored) {
-            if (player.getGameMode() == GameMode.ADVENTURE) player.setGameMode(GameMode.SURVIVAL);
+        PersistentDataContainer data = player.getPersistentDataContainer();
+        Location previousLocation = readPreviousLocation(player);
+        if (previousLocation != null) {
+            internalTeleports.add(player.getUniqueId());
+            boolean restored;
+            try {
+                restored = player.teleport(previousLocation);
+            } finally {
+                internalTeleports.remove(player.getUniqueId());
+            }
+
+            if (restored) {
+                clearPreviousLocation(data);
+            } else {
+                plugin.getLogger().warning("Could not restore pre-maintenance location for " + player.getName()
+                        + "; saved location will be kept for the next join.");
+            }
         }
+
+        String storedGameMode = data.get(previousGameModeKey, PersistentDataType.STRING);
+        if (storedGameMode != null) {
+            data.remove(previousGameModeKey);
+            try {
+                GameMode previous = GameMode.valueOf(storedGameMode);
+                if (player.getGameMode() != previous) player.setGameMode(previous);
+            } catch (IllegalArgumentException ignored) {
+                if (player.getGameMode() == GameMode.ADVENTURE) player.setGameMode(GameMode.SURVIVAL);
+            }
+        }
+
+        removeMaintenanceBypasses(player);
     }
 
     public boolean isInternalTeleport(Player player) {
@@ -263,6 +302,57 @@ public final class MaintenanceService {
         }
     }
 
+    private void savePreviousState(Player player) {
+        PersistentDataContainer data = player.getPersistentDataContainer();
+
+        if (!data.has(previousGameModeKey, PersistentDataType.STRING)) {
+            data.set(previousGameModeKey, PersistentDataType.STRING, player.getGameMode().name());
+        }
+
+        if (!data.has(previousWorldKey, PersistentDataType.STRING)) {
+            Location location = player.getLocation();
+            World world = location.getWorld();
+            if (world != null) {
+                data.set(previousWorldKey, PersistentDataType.STRING, world.getName());
+                data.set(previousXKey, PersistentDataType.DOUBLE, location.getX());
+                data.set(previousYKey, PersistentDataType.DOUBLE, location.getY());
+                data.set(previousZKey, PersistentDataType.DOUBLE, location.getZ());
+                data.set(previousYawKey, PersistentDataType.FLOAT, location.getYaw());
+                data.set(previousPitchKey, PersistentDataType.FLOAT, location.getPitch());
+            }
+        }
+    }
+
+    private Location readPreviousLocation(Player player) {
+        PersistentDataContainer data = player.getPersistentDataContainer();
+        String worldName = data.get(previousWorldKey, PersistentDataType.STRING);
+        Double x = data.get(previousXKey, PersistentDataType.DOUBLE);
+        Double y = data.get(previousYKey, PersistentDataType.DOUBLE);
+        Double z = data.get(previousZKey, PersistentDataType.DOUBLE);
+        Float yaw = data.get(previousYawKey, PersistentDataType.FLOAT);
+        Float pitch = data.get(previousPitchKey, PersistentDataType.FLOAT);
+
+        if (worldName == null || x == null || y == null || z == null) return null;
+
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            plugin.getLogger().warning("Cannot restore maintenance location for " + player.getName()
+                    + ": world '" + worldName + "' is not loaded.");
+            return null;
+        }
+
+        return new Location(world, x, y, z, yaw == null ? 0.0f : yaw, pitch == null ? 0.0f : pitch);
+    }
+
+    private void clearPreviousLocation(PersistentDataContainer data) {
+        data.remove(previousWorldKey);
+        data.remove(previousXKey);
+        data.remove(previousYKey);
+        data.remove(previousZKey);
+        data.remove(previousYawKey);
+        data.remove(previousPitchKey);
+    }
+
     private void addMaintenanceBypasses(Player player) {
         if (maintenanceAttachments.containsKey(player.getUniqueId())) return;
         PermissionAttachment attachment = player.addAttachment(plugin);
@@ -281,11 +371,6 @@ public final class MaintenanceService {
             // The attachment can already be gone during plugin shutdown/reload.
         }
         player.recalculatePermissions();
-    }
-
-    private void savePreviousGameMode(Player player) {
-        if (player.getPersistentDataContainer().has(previousGameModeKey, PersistentDataType.STRING)) return;
-        player.getPersistentDataContainer().set(previousGameModeKey, PersistentDataType.STRING, player.getGameMode().name());
     }
 
     private static String normalizeCommand(String raw) {
