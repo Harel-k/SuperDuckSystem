@@ -8,10 +8,13 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,6 +24,7 @@ public final class MaintenanceService {
     private final Set<String> whitelistedPlayers = new HashSet<>();
     private final Set<String> allowedCommands = new HashSet<>();
     private final Set<UUID> internalTeleports = new HashSet<>();
+    private final Map<UUID, PermissionAttachment> maintenanceAttachments = new HashMap<>();
 
     private boolean active;
     private String whitelistPermission;
@@ -135,6 +139,8 @@ public final class MaintenanceService {
     public void apply(Player player, boolean teleport) {
         if (!isRestricted(player)) return;
 
+        addMaintenanceBypasses(player);
+
         if (forceAdventure) {
             savePreviousGameMode(player);
             if (player.getGameMode() != GameMode.ADVENTURE) {
@@ -151,7 +157,9 @@ public final class MaintenanceService {
             if (room != null) {
                 internalTeleports.add(player.getUniqueId());
                 try {
-                    player.teleport(room);
+                    if (!player.teleport(room)) {
+                        plugin.getLogger().warning("Maintenance teleport was cancelled for " + player.getName());
+                    }
                 } finally {
                     internalTeleports.remove(player.getUniqueId());
                 }
@@ -172,6 +180,8 @@ public final class MaintenanceService {
 
     public void restorePlayer(Player player) {
         if (player == null) return;
+        removeMaintenanceBypasses(player);
+
         String stored = player.getPersistentDataContainer().get(previousGameModeKey, PersistentDataType.STRING);
         if (stored == null) return;
 
@@ -238,6 +248,26 @@ public final class MaintenanceService {
             if (isRestricted(player)) apply(player, active);
             else restorePlayer(player);
         }
+    }
+
+    private void addMaintenanceBypasses(Player player) {
+        if (maintenanceAttachments.containsKey(player.getUniqueId())) return;
+        PermissionAttachment attachment = player.addAttachment(plugin);
+        attachment.setPermission("superduck.combat.bypass", true);
+        attachment.setPermission("duckypvp.combat.bypass", true);
+        maintenanceAttachments.put(player.getUniqueId(), attachment);
+        player.recalculatePermissions();
+    }
+
+    private void removeMaintenanceBypasses(Player player) {
+        PermissionAttachment attachment = maintenanceAttachments.remove(player.getUniqueId());
+        if (attachment == null) return;
+        try {
+            player.removeAttachment(attachment);
+        } catch (IllegalArgumentException ignored) {
+            // The attachment can already be gone during plugin shutdown/reload.
+        }
+        player.recalculatePermissions();
     }
 
     private void savePreviousGameMode(Player player) {
