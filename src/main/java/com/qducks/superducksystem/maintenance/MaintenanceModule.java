@@ -34,6 +34,7 @@ public final class MaintenanceModule implements SuperDuckModule {
 
         listener = new MaintenanceListener(maintenance);
         plugin.getServer().getPluginManager().registerEvents(listener, plugin);
+
         maintenance.start();
         plugin.getLogger().info("Full server maintenance module enabled.");
     }
@@ -46,10 +47,13 @@ public final class MaintenanceModule implements SuperDuckModule {
 
     @Override
     public void disable() {
+        maintenance.stop();
+
         if (listener != null) {
             org.bukkit.event.HandlerList.unregisterAll(listener);
             listener = null;
         }
+
         plugin.getLogger().info("Full server maintenance module disabled.");
     }
 }
