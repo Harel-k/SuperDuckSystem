@@ -111,7 +111,7 @@ public final class MaintenanceService {
                 "<yellow><bold>Please Be Patient</bold></yellow>");
 
         String bossbarText = config.getString("ui.bossbar.text",
-                "<gold><bold>Server in Maintance</bold></gold>");
+                "<gold><bold>Server in Maintenance</bold></gold>");
         BossBar.Color bossbarColor = parseBossBarColor(config.getString("ui.bossbar.color", "YELLOW"));
         BossBar.Overlay bossbarOverlay = parseBossBarOverlay(config.getString("ui.bossbar.overlay", "PROGRESS"));
         maintenanceBossBar = BossBar.bossBar(
