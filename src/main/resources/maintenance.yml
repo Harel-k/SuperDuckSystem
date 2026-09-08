@@ -47,7 +47,7 @@ restrictions:
 ui:
   bossbar:
     enabled: true
-    text: "<gold><bold>Server in Maintance</bold></gold>"
+    text: "<gold><bold>Server in Maintenance</bold></gold>"
     color: YELLOW
     overlay: PROGRESS
 
