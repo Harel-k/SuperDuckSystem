@@ -136,6 +136,19 @@ public final class MaintenanceService {
         }
     }
 
+    public void handleQuit(Player player) {
+        if (player == null) return;
+        internalTeleports.remove(player.getUniqueId());
+        PermissionAttachment attachment = maintenanceAttachments.remove(player.getUniqueId());
+        if (attachment != null) {
+            try {
+                player.removeAttachment(attachment);
+            } catch (IllegalArgumentException ignored) {
+                // Bukkit can already have removed plugin attachments while the player is disconnecting.
+            }
+        }
+    }
+
     public void apply(Player player, boolean teleport) {
         if (!isRestricted(player)) return;
 
