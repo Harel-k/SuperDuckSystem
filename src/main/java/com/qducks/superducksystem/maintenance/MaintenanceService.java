@@ -100,6 +100,7 @@ public final class MaintenanceService {
 
     public boolean isWhitelisted(Player player) {
         if (player == null) return true;
+        if (player.hasPermission("superduck.admin.maintenancemode")) return true;
         if (whitelistPermission != null && !whitelistPermission.isBlank() && player.hasPermission(whitelistPermission)) {
             return true;
         }
