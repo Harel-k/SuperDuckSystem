@@ -5,6 +5,7 @@ import com.qducks.superducksystem.auction.AuctionModule;
 import com.qducks.superducksystem.combat.CombatModule;
 import com.qducks.superducksystem.crate.CrateModule;
 import com.qducks.superducksystem.economy.EconomyModule;
+import com.qducks.superducksystem.maintenance.MaintenanceModule;
 import com.qducks.superducksystem.order.OrderModule;
 import com.qducks.superducksystem.reward.RewardsModule;
 import com.qducks.superducksystem.settings.SettingsModule;
@@ -35,6 +36,7 @@ public final class ModuleManager {
         register(new StatsModule(plugin));
         register(new RewardsModule(plugin, plugin.rewards()));
         register(new CombatModule(plugin));
+        register(new MaintenanceModule(plugin));
         plugin.getLogger().info("Module framework initialized with " + modules.size() + " registered module(s).");
     }
 
@@ -42,14 +44,17 @@ public final class ModuleManager {
         String id = module.id().toLowerCase();
         if (modules.containsKey(id)) throw new IllegalArgumentException("Duplicate module id: " + id);
         modules.put(id, module);
-        if (plugin.getConfig().getBoolean("modules." + id, false)) module.enable();
+        boolean defaultEnabled = id.equals("maintenance");
+        if (plugin.getConfig().getBoolean("modules." + id, defaultEnabled)) module.enable();
     }
 
     public Map<String, SuperDuckModule> all() { return Collections.unmodifiableMap(modules); }
 
     public void reload() {
         for (SuperDuckModule module : modules.values()) {
-            if (!plugin.getConfig().getBoolean("modules." + module.id().toLowerCase(), false)) continue;
+            String id = module.id().toLowerCase();
+            boolean defaultEnabled = id.equals("maintenance");
+            if (!plugin.getConfig().getBoolean("modules." + id, defaultEnabled)) continue;
             try { module.reload(); }
             catch (Exception exception) { plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage()); }
         }
