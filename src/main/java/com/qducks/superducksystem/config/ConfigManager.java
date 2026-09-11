@@ -51,6 +51,11 @@ public final class ConfigManager {
         reloadSecondaryFiles();
     }
 
+    public void reloadMaintenance() {
+        maintenanceFile = new File(plugin.getDataFolder(), "maintenance.yml");
+        maintenance = YamlConfiguration.loadConfiguration(maintenanceFile);
+    }
+
     public FileConfiguration main() { return plugin.getConfig(); }
     public FileConfiguration messages() { return messages; }
     public FileConfiguration economy() { return economy; }
@@ -92,8 +97,7 @@ public final class ConfigManager {
         customItems = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "custom-items.yml"));
         stats = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "stats.yml"));
         rewards = YamlConfiguration.loadConfiguration(new File(plugin.getDataFolder(), "rewards.yml"));
-        maintenanceFile = new File(plugin.getDataFolder(), "maintenance.yml");
-        maintenance = YamlConfiguration.loadConfiguration(maintenanceFile);
+        reloadMaintenance();
     }
 
     private void saveResourceIfMissing(String name) {
