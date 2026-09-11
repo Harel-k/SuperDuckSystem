@@ -2,7 +2,7 @@
 # This is separate from /sds maintenance <module> <on|off>.
 #
 # /maintenancemode or /mm toggles the mode.
-# /mm on|off|status|setroom|reload are also available.
+# /mm on|off|status|setroom|reload|debug are also available.
 
 # Saved automatically when /mm is toggled, so maintenance survives restarts.
 active: false
@@ -16,15 +16,12 @@ room:
   pitch: 0.0
 
 whitelist:
-  # Grant this through LuckPerms to staff who should ignore maintenance restrictions.
+  # This permission must be granted explicitly, for example with LuckPerms.
+  # OP/admin status alone does NOT bypass maintenance.
   permission: superduck.maintenance.whitelist
 
-  # Also accepted as a bypass permission.
-  alternate-bypass-permission: superduck.maintenance.bypass
-
   # Names are case-insensitive. UUIDs are also accepted.
-  players:
-    - NAVIDOG100
+  players: []
 
 # Only these commands can be used by restricted players.
 # Do not include the leading slash.
