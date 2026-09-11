@@ -46,10 +46,18 @@ public final class MaintenanceListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommand(PlayerCommandPreprocessEvent event) {
-        if (!maintenance.isRestricted(event.getPlayer())) return;
+        Player player = event.getPlayer();
+        if (!maintenance.isRestricted(player)) return;
+
+        if (player.hasPermission("superduck.admin.maintenancemode")
+                && maintenance.isMaintenanceManagementCommand(event.getMessage())) {
+            return;
+        }
+
         if (maintenance.isCommandAllowed(event.getMessage())) return;
+
         event.setCancelled(true);
-        maintenance.sendBlockedCommand(event.getPlayer());
+        maintenance.sendBlockedCommand(player);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
