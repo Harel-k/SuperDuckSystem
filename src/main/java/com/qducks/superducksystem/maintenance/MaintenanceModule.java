@@ -28,7 +28,7 @@ public final class MaintenanceModule implements SuperDuckModule {
             throw new IllegalStateException("Command /maintenancemode is missing from plugin.yml");
         }
 
-        MaintenanceCommand handler = new MaintenanceCommand(maintenance);
+        MaintenanceCommand handler = new MaintenanceCommand(plugin, maintenance);
         command.setExecutor(handler);
         command.setTabCompleter(handler);
 
@@ -41,6 +41,7 @@ public final class MaintenanceModule implements SuperDuckModule {
 
     @Override
     public void reload() {
+        plugin.configs().reloadMaintenance();
         maintenance.reload();
         maintenance.reconcileOnlinePlayers();
     }
