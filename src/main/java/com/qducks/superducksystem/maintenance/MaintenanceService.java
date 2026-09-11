@@ -25,6 +25,7 @@ import java.util.UUID;
 
 public final class MaintenanceService {
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private static final Set<String> MANAGEMENT_COMMANDS = Set.of("mm", "maintenancemode", "maintancemode");
 
     private final SuperDuckSystem plugin;
 
@@ -44,7 +45,6 @@ public final class MaintenanceService {
 
     private boolean active;
     private String whitelistPermission;
-    private String bypassPermission;
     private boolean forceAdventure;
     private String blockedCommandMessage;
     private String maintenanceMessage;
@@ -96,7 +96,6 @@ public final class MaintenanceService {
         FileConfiguration config = plugin.configs().maintenance();
         active = config.getBoolean("active", false);
         whitelistPermission = config.getString("whitelist.permission", "superduck.maintenance.whitelist");
-        bypassPermission = config.getString("whitelist.alternate-bypass-permission", "superduck.maintenance.bypass");
         forceAdventure = config.getBoolean("restrictions.force-adventure", true);
         blockedCommandMessage = config.getString("messages.command-blocked",
                 "<red>The server is currently in maintenance mode.</red>");
@@ -168,22 +167,35 @@ public final class MaintenanceService {
 
     public boolean isWhitelisted(Player player) {
         if (player == null) return true;
-        if (player.hasPermission("superduck.admin.maintenancemode")) return true;
-        if (whitelistPermission != null && !whitelistPermission.isBlank() && player.hasPermission(whitelistPermission)) {
-            return true;
-        }
-        if (bypassPermission != null && !bypassPermission.isBlank() && player.hasPermission(bypassPermission)) {
-            return true;
-        }
+        return hasWhitelistPermission(player) || isListedInConfig(player);
+    }
 
+    public boolean hasWhitelistPermission(Player player) {
+        return player != null
+                && whitelistPermission != null
+                && !whitelistPermission.isBlank()
+                && player.hasPermission(whitelistPermission);
+    }
+
+    public boolean isListedInConfig(Player player) {
+        if (player == null) return false;
         String name = player.getName().toLowerCase(Locale.ROOT);
         String uuid = player.getUniqueId().toString().toLowerCase(Locale.ROOT);
         return whitelistedPlayers.contains(name) || whitelistedPlayers.contains(uuid);
     }
 
+    public String whitelistPermissionNode() {
+        return whitelistPermission == null ? "" : whitelistPermission;
+    }
+
     public boolean isCommandAllowed(String rawCommand) {
         if (rawCommand == null || rawCommand.isBlank()) return false;
         return allowedCommands.contains(normalizeCommand(rawCommand));
+    }
+
+    public boolean isMaintenanceManagementCommand(String rawCommand) {
+        if (rawCommand == null || rawCommand.isBlank()) return false;
+        return MANAGEMENT_COMMANDS.contains(normalizeCommand(rawCommand));
     }
 
     public void handleJoin(Player player) {
@@ -221,8 +233,6 @@ public final class MaintenanceService {
     public void apply(Player player, boolean teleport) {
         if (!isRestricted(player)) return;
 
-        // Save only once. Reconnects and restarts during maintenance must never replace
-        // the real pre-maintenance return point with the maintenance-room position.
         savePreviousState(player);
         addMaintenanceBypasses(player);
 
@@ -267,9 +277,6 @@ public final class MaintenanceService {
         if (player == null) return;
 
         hideMaintenanceUi(player);
-
-        // Keep temporary combat bypasses during the return teleport so DuckyPVP or
-        // global combat cannot block restoration.
         addMaintenanceBypasses(player);
 
         PersistentDataContainer data = player.getPersistentDataContainer();
