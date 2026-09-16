@@ -5,8 +5,8 @@ abuse-mode:
   # Used the first time an admin profile is created.
   default-gamemode: CREATIVE
 
-  # Prevents admin-profile items from leaking into normal survival containers/world drops.
-  prevent-world-item-transfer: true
+  # Abuse Mode is trusted admin mode: normal world interactions are allowed.
+  # Admins can drop/pick up items, use containers, and build normally.
 
   # Runtime bypasses while Abuse Mode is ON.
   # Grim/Boar entries are harmless until those anti-cheats are installed.
@@ -16,7 +16,7 @@ abuse-mode:
     - grim.disabled
     - boar.exempt
 
-  # Commands that could move admin-profile resources into the legit economy/world.
+  # Commands that could move admin-profile resources into another player's legit economy/world.
   blocked-transfer-commands:
     - pay
     - sell
@@ -128,4 +128,4 @@ legit-mode:
 
 messages:
   legit-command-blocked: "&a&lLEGIT MODE &8» &7Enable &f/abuse on &7to use admin commands."
-  abuse-transfer-blocked: "&c&lABUSE MODE &8» &7That command could move admin resources into the legit economy/world."
+  abuse-transfer-blocked: "&c&lABUSE MODE &8» &7That command could move admin resources into another player's legit economy/world."
