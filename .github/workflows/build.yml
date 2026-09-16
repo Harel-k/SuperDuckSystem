@@ -73,9 +73,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh release delete dev-latest --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+
+          # Delete only the old release. Do not use --cleanup-tag here: tag cleanup can
+          # race with recreating the same tag and leave the new release orphaned/draft.
+          gh release delete dev-latest --repo "$GITHUB_REPOSITORY" --yes || true
+
+          # Move/recreate the stable tag explicitly at the commit we just built.
+          git tag -f dev-latest "$GITHUB_SHA"
+          git push origin refs/tags/dev-latest --force
+
           gh release create dev-latest build/libs/SuperDuckSystem.jar \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
             --title "SuperDuckSystem - Latest Dev Build" \
             --notes "Automatically built from the latest successful dev commit. Download SuperDuckSystem.jar below and upload it to the server's plugins folder."
