@@ -16,6 +16,7 @@ modules:
   rewards: true
   combat: true
   maintenance: true
+  abuse: true
 
 database:
   type: SQLITE
