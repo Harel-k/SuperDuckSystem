@@ -34,10 +34,15 @@ legit-mode:
   blocked-commands:
     - give
     - gamemode
+    - gm
     - gmc
     - gms
     - gma
     - gmsp
+    - creative
+    - survival
+    - adventure
+    - spectator
     - tp
     - teleport
     - tphere
