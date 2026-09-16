@@ -1,0 +1,126 @@
+# QDucks Abuse Mode
+# Separates an owner's/admin's LEGIT survival state from their ADMIN state.
+
+abuse-mode:
+  # Used the first time an admin profile is created.
+  default-gamemode: CREATIVE
+
+  # Prevents admin-profile items from leaking into normal survival containers/world drops.
+  prevent-world-item-transfer: true
+
+  # Runtime bypasses while Abuse Mode is ON.
+  # Grim/Boar entries are harmless until those anti-cheats are installed.
+  bypass-permissions:
+    - superduck.combat.bypass
+    - duckypvp.combat.bypass
+    - grim.disabled
+    - boar.exempt
+
+  # Commands that could move admin-profile resources into the legit economy/world.
+  blocked-transfer-commands:
+    - pay
+    - sell
+    - ah
+    - auctionhouse
+    - order
+    - orders
+    - trade
+    - qs
+    - quickshop
+
+legit-mode:
+  # These are blocked for managed staff while Abuse Mode is OFF, even if OP/LuckPerms grants them.
+  # Normal player commands such as /home, /spawn, /rtp, /tpa, /shop, etc. stay usable.
+  blocked-commands:
+    - give
+    - gamemode
+    - gmc
+    - gms
+    - gma
+    - gmsp
+    - tp
+    - teleport
+    - tphere
+    - tpall
+    - effect
+    - enchant
+    - xp
+    - experience
+    - summon
+    - spawnmob
+    - kill
+    - killall
+    - clear
+    - fill
+    - fillbiome
+    - clone
+    - setblock
+    - item
+    - loot
+    - attribute
+    - execute
+    - op
+    - deop
+    - ban
+    - ban-ip
+    - pardon
+    - pardon-ip
+    - kick
+    - whitelist
+    - stop
+    - reload
+    - save-all
+    - save-on
+    - save-off
+    - gamerule
+    - difficulty
+    - time
+    - weather
+    - setworldspawn
+    - spawnpoint
+    - worldborder
+    - forceload
+    - data
+    - datapack
+    - function
+    - schedule
+    - scoreboard
+    - tag
+    - team
+    - place
+    - locate
+    - seed
+    - spectate
+    - fly
+    - god
+    - heal
+    - feed
+    - speed
+    - vanish
+    - invsee
+    - endersee
+    - repair
+    - more
+    - top
+    - thru
+    - sudo
+    - eco
+    - lp
+    - luckperms
+    - rg
+    - wg
+    - worldguard
+    - we
+    - worldedit
+    - //
+    - mv
+    - multiverse
+    - mm
+    - maintenancemode
+    - sds
+    - superduck
+    - duckypvp
+
+messages:
+  legit-command-blocked: "&a&lLEGIT MODE &8» &7Enable &f/abuse on &7to use admin commands."
+  abuse-transfer-blocked: "&c&lABUSE MODE &8» &7That command could move admin resources into the legit economy/world."
