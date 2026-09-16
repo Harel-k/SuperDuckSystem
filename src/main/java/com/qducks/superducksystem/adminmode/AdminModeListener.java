@@ -1,7 +1,5 @@
 package com.qducks.superducksystem.adminmode;
 
-import org.bukkit.GameMode;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,6 +13,7 @@ import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerCommandSendEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -23,6 +22,11 @@ import java.util.Locale;
 import java.util.Set;
 
 public final class AdminModeListener implements Listener {
+    private static final Set<String> GAMEMODE_COMMANDS = Set.of(
+            "gamemode", "gm", "gmc", "gms", "gma", "gmsp",
+            "creative", "survival", "adventure", "spectator"
+    );
+
     private final AdminModeService service;
 
     public AdminModeListener(AdminModeService service) {
@@ -59,7 +63,7 @@ public final class AdminModeListener implements Listener {
             return;
         }
 
-        if (service.isManaged(player) && service.isLegitBlockedCommand(event.getMessage())) {
+        if (service.isManaged(player) && (GAMEMODE_COMMANDS.contains(root) || service.isLegitBlockedCommand(event.getMessage()))) {
             event.setCancelled(true);
             player.sendMessage(service.blockedMessage());
         }
@@ -72,9 +76,20 @@ public final class AdminModeListener implements Listener {
 
         Set<String> remove = new HashSet<>();
         for (String command : event.getCommands()) {
-            if (service.isLegitBlockedCommand("/" + command)) remove.add(command);
+            String root = commandRoot("/" + command);
+            if (GAMEMODE_COMMANDS.contains(root) || service.isLegitBlockedCommand("/" + command)) remove.add(command);
         }
         event.getCommands().removeAll(remove);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onGameModeChange(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        if (!service.isManaged(player)) return;
+        if (service.isActive(player) || service.isSwitching(player)) return;
+
+        event.setCancelled(true);
+        player.sendMessage("§a§lLEGIT MODE §8» §7Gamemode is locked. Enable §f/abuse on §7to use admin gamemodes.");
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
