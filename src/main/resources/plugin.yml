@@ -18,6 +18,11 @@ commands:
     usage: /maintenancemode [on|off|status|setroom|reload|debug|whitelist]
     aliases: [mm, maintancemode]
     permission: superduck.admin.maintenancemode
+  abuse:
+    description: Switch between protected legit and admin profiles
+    usage: /abuse <on|off|status> [player]
+    aliases: [adminmode]
+    permission: superduck.abuse.toggle
   balance:
     description: View your money balance
     usage: /balance [player]
@@ -115,6 +120,8 @@ permissions:
   superduck.rewards: {default: true}
   superduck.combat.bypass: {default: op}
   superduck.maintenance.whitelist: {default: false}
+  superduck.abuse.toggle: {default: op}
+  superduck.abuse.others: {default: op}
   superduck.admin.maintenancemode: {default: op}
   superduck.admin.keys: {default: op}
   superduck.admin.items: {default: op}
