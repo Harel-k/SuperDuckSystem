@@ -21,6 +21,10 @@ repositories {
         url = uri("https://repo.opencollab.dev/main/")
     }
     maven {
+        name = "enginehub"
+        url = uri("https://maven.enginehub.org/repo/")
+    }
+    maven {
         name = "codemc-vaultunlocked"
         url = uri("https://repo.codemc.io/repository/creatorfromhell/")
     }
@@ -31,6 +35,7 @@ dependencies {
     compileOnly("me.clip:placeholderapi:2.12.3")
     compileOnly("org.geysermc.floodgate:api:2.2.5-SNAPSHOT")
     compileOnly("net.luckperms:api:5.5")
+    compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.17")
     compileOnly("net.milkbowl.vault:VaultUnlockedAPI:2.20")
 
     // Paper does not guarantee an SQLite JDBC driver for plugins. Bundle it so the
