@@ -40,7 +40,12 @@ public final class AdminModeListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onQuit(PlayerQuitEvent event) {
-        service.handleQuit(event.getPlayer());
+        Player player = event.getPlayer();
+        if (service.isActive(player)) {
+            // Keep the latest admin-side /rg bypass toggle across a clean restart.
+            AdminModeWorldGuardState.captureAdminState(plugin, player);
+        }
+        service.handleQuit(player);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
