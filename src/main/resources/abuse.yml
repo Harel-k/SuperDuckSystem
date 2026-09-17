@@ -12,6 +12,7 @@ abuse-mode:
   # Grim/Boar entries are harmless until those anti-cheats are installed.
   bypass-permissions:
     - superduck.combat.bypass
+    - superduck.rtp.bypass.cooldown
     - duckypvp.combat.bypass
     - grim.disabled
     - boar.exempt
