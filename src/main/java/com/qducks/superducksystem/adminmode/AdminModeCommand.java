@@ -1,5 +1,6 @@
 package com.qducks.superducksystem.adminmode;
 
+import com.qducks.superducksystem.SuperDuckSystem;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -13,9 +14,11 @@ import java.util.List;
 import java.util.Locale;
 
 public final class AdminModeCommand implements CommandExecutor, TabCompleter {
+    private final SuperDuckSystem plugin;
     private final AdminModeService service;
 
-    public AdminModeCommand(AdminModeService service) {
+    public AdminModeCommand(SuperDuckSystem plugin, AdminModeService service) {
+        this.plugin = plugin;
         this.service = service;
     }
 
@@ -60,8 +63,21 @@ public final class AdminModeCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (sub) {
-            case "on" -> service.enable(target, sender);
-            case "off" -> service.disable(target, sender);
+            case "on" -> {
+                boolean wasLegit = !service.isActive(target);
+                service.enable(target, sender);
+                if (wasLegit) {
+                    // Legit Mode forces WorldGuard bypass off. When returning to Abuse Mode,
+                    // restore the exact bypass toggle state the admin had before /abuse off.
+                    AdminModeWorldGuardState.restoreWhenAdminReady(plugin, service, target);
+                }
+            }
+            case "off" -> {
+                if (service.isActive(target)) {
+                    AdminModeWorldGuardState.captureAdminState(plugin, target);
+                }
+                service.disable(target, sender);
+            }
             case "status" -> {
                 sender.sendMessage("§6§lABUSE MODE §8» §f" + target.getName());
                 sender.sendMessage("§7Mode: " + (service.isActive(target) ? "§cABUSE" : "§aLEGIT"));
