@@ -25,10 +25,10 @@ public final class AdminModeModule implements SuperDuckModule {
         if (listener != null) return;
         PluginCommand command = plugin.getCommand("abuse");
         if (command == null) throw new IllegalStateException("Command /abuse is missing from plugin.yml");
-        AdminModeCommand handler = new AdminModeCommand(service);
+        AdminModeCommand handler = new AdminModeCommand(plugin, service);
         command.setExecutor(handler);
         command.setTabCompleter(handler);
-        listener = new AdminModeListener(service);
+        listener = new AdminModeListener(plugin, service);
         plugin.getServer().getPluginManager().registerEvents(listener, plugin);
         service.start();
         plugin.getLogger().info("Abuse Mode module enabled.");
