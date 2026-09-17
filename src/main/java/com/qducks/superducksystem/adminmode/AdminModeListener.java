@@ -48,13 +48,9 @@ public final class AdminModeListener implements Listener {
             return;
         }
 
-        if (service.isActive(player)) {
-            if (service.isAdminTransferCommand(event.getMessage())) {
-                event.setCancelled(true);
-                player.sendMessage(service.transferBlockedMessage());
-            }
-            return;
-        }
+        // Abuse Mode is trusted admin mode. SuperDuckSystem does not restrict
+        // commands or normal gameplay while it is enabled.
+        if (service.isActive(player)) return;
 
         if (service.isManaged(player) && (GAMEMODE_COMMANDS.contains(root) || service.isLegitBlockedCommand(event.getMessage()))) {
             event.setCancelled(true);
