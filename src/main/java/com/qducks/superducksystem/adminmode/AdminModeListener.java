@@ -1,5 +1,6 @@
 package com.qducks.superducksystem.adminmode;
 
+import com.qducks.superducksystem.SuperDuckSystem;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -20,15 +21,21 @@ public final class AdminModeListener implements Listener {
             "creative", "survival", "adventure", "spectator"
     );
 
+    private final SuperDuckSystem plugin;
     private final AdminModeService service;
 
-    public AdminModeListener(AdminModeService service) {
+    public AdminModeListener(SuperDuckSystem plugin, AdminModeService service) {
+        this.plugin = plugin;
         this.service = service;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        service.handleJoin(event.getPlayer());
+        Player player = event.getPlayer();
+        service.handleJoin(player);
+        if (service.isActive(player)) {
+            AdminModeWorldGuardState.restoreWhenAdminReady(plugin, service, player);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
