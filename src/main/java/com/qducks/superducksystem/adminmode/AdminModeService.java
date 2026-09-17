@@ -3,6 +3,9 @@ package com.qducks.superducksystem.adminmode;
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
 import com.qducks.superducksystem.economy.TransactionType;
+import com.sk89q.worldguard.LocalPlayer;
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.command.CommandSender;
@@ -105,6 +108,7 @@ public final class AdminModeService {
             active.remove(player.getUniqueId());
             player.removeScoreboardTag(TAG);
             removeBypasses(player);
+            if (isManaged(player)) enforceLegitSafety(player);
         }
     }
 
@@ -137,6 +141,9 @@ public final class AdminModeService {
                 YamlConfiguration data = loadData(target.getUniqueId());
                 ConfigurationSection legit = resetSection(data, "profiles.legit");
                 PlayerStateCodec.capture(target, legit, balances.money, balances.ducks);
+                // Legit Mode is always survival, even if the owner happened to be creative
+                // before switching profiles for the first time.
+                legit.set("gamemode", GameMode.SURVIVAL.name());
 
                 ConfigurationSection admin = data.getConfigurationSection("profiles.admin");
                 if (admin == null) {
@@ -185,7 +192,8 @@ public final class AdminModeService {
             return;
         }
         if (!isActive(target)) {
-            actor.sendMessage("§e" + target.getName() + " is already in Legit Mode.");
+            enforceLegitSafety(target);
+            actor.sendMessage("§e" + target.getName() + " is already in Legit Mode. Survival and WorldGuard protection were enforced.");
             return;
         }
 
@@ -208,12 +216,14 @@ public final class AdminModeService {
 
                 ConfigurationSection admin = resetSection(data, "profiles.admin");
                 PlayerStateCodec.capture(target, admin, balances.money, balances.ducks);
+                legit.set("gamemode", GameMode.SURVIVAL.name());
                 data.set("last-name", target.getName());
                 data.set("active", true);
                 data.set("transition", "disabling");
                 saveData(target.getUniqueId(), data);
 
                 boolean teleported = PlayerStateCodec.apply(target, legit);
+                enforceLegitSafety(target);
                 restoreBalances(target, legit).whenComplete((ignored, restoreError) -> Bukkit.getScheduler().runTask(plugin, () -> {
                     if (restoreError != null) {
                         plugin.getLogger().severe("Failed to restore legit economy profile for " + target.getName() + ": " + restoreError.getMessage());
@@ -231,7 +241,7 @@ public final class AdminModeService {
                     removeBypasses(target);
                     switching.remove(target.getUniqueId());
                     target.sendTitle("§a§lLEGIT MODE", "§7Survival profile restored", 10, 50, 10);
-                    target.sendMessage("§a§lLEGIT MODE §8» §fON §7— legit inventory, ender chest, location and economy restored.");
+                    target.sendMessage("§a§lLEGIT MODE §8» §fON §7— survival, WorldGuard protection, legit inventory, ender chest, location and economy restored.");
                     if (!teleported) target.sendMessage("§eYour legit profile world could not be restored, so your current location was kept.");
                     if (!actor.equals(target)) actor.sendMessage("§aDisabled Abuse Mode for §f" + target.getName() + "§a.");
                 }));
@@ -288,9 +298,11 @@ public final class AdminModeService {
             active.remove(player.getUniqueId());
             removeBypasses(player);
             player.removeScoreboardTag(TAG);
+            section.set("gamemode", GameMode.SURVIVAL.name());
         }
 
         PlayerStateCodec.apply(player, section);
+        if (!recoveredActive) enforceLegitSafety(player);
         restoreBalances(player, section).whenComplete((ignored, error) -> Bukkit.getScheduler().runTask(plugin, () -> {
             if (error != null) {
                 plugin.getLogger().severe("Failed Abuse Mode crash recovery economy restore for " + player.getName() + ": " + error.getMessage());
@@ -300,10 +312,31 @@ public final class AdminModeService {
             YamlConfiguration recovered = loadData(player.getUniqueId());
             recovered.set("active", recoveredActive);
             recovered.set("transition", "none");
+            if (!recoveredActive) recovered.set("profiles.legit.gamemode", GameMode.SURVIVAL.name());
             saveData(player.getUniqueId(), recovered);
             switching.remove(player.getUniqueId());
             player.sendMessage("§e§lABUSE SAFETY §8» §7A previous profile switch was interrupted. Your safe " + profileName + " profile was recovered.");
         }));
+    }
+
+    private void enforceLegitSafety(Player player) {
+        UUID uuid = player.getUniqueId();
+        boolean alreadySwitching = switching.contains(uuid);
+        if (!alreadySwitching) switching.add(uuid);
+        try {
+            if (player.getGameMode() != GameMode.SURVIVAL) player.setGameMode(GameMode.SURVIVAL);
+
+            // /rg bypass is a toggle. Using WorldGuard's session API lets us guarantee
+            // bypass is OFF instead of accidentally toggling it on.
+            if (Bukkit.getPluginManager().isPluginEnabled("WorldGuard")) {
+                LocalPlayer localPlayer = WorldGuardPlugin.inst().wrapPlayer(player);
+                WorldGuard.getInstance().getPlatform().getSessionManager().get(localPlayer).setBypassDisabled(true);
+            }
+        } catch (Throwable throwable) {
+            plugin.getLogger().warning("Could not force WorldGuard bypass off for " + player.getName() + ": " + throwable.getMessage());
+        } finally {
+            if (!alreadySwitching) switching.remove(uuid);
+        }
     }
 
     private void saveCurrentProfile(Player player) {
@@ -316,6 +349,7 @@ public final class AdminModeService {
         PlayerStateCodec.capture(player, section,
                 plugin.economy().cachedBalance(player.getUniqueId(), CurrencyType.MONEY),
                 plugin.economy().cachedBalance(player.getUniqueId(), CurrencyType.DUCKS));
+        if (!isActive(player)) section.set("gamemode", GameMode.SURVIVAL.name());
         data.set("last-name", player.getName());
         data.set("active", isActive(player));
         saveData(player.getUniqueId(), data);
