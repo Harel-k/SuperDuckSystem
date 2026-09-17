@@ -90,14 +90,10 @@ final class PlayerStateCodec {
 
     static boolean apply(Player player, ConfigurationSection section) {
         if (section == null) return false;
-        String worldName = section.getString("location.world");
-        World world = worldName == null ? null : Bukkit.getWorld(worldName);
-        boolean teleported = false;
-        if (world != null) {
-            teleported = player.teleport(new Location(world,
-                    section.getDouble("location.x"), section.getDouble("location.y"), section.getDouble("location.z"),
-                    (float) section.getDouble("location.yaw"), (float) section.getDouble("location.pitch")));
-        }
+
+        // Restore the profile itself first. The saved location is deliberately applied
+        // last so another state change in this method cannot immediately interfere with
+        // the profile teleport.
         player.getInventory().setStorageContents(loadItems(section, "inventory", 36));
         player.getInventory().setArmorContents(loadItems(section, "armor", 4));
         player.getInventory().setItemInOffHand(section.getItemStack("offhand"));
@@ -105,6 +101,7 @@ final class PlayerStateCodec {
         ItemStack[] ender = new ItemStack[player.getEnderChest().getSize()];
         System.arraycopy(savedEnder, 0, ender, 0, Math.min(savedEnder.length, ender.length));
         player.getEnderChest().setContents(ender);
+
         GameMode gameMode;
         try { gameMode = GameMode.valueOf(section.getString("gamemode", "SURVIVAL")); }
         catch (IllegalArgumentException ex) { gameMode = GameMode.SURVIVAL; }
@@ -128,7 +125,19 @@ final class PlayerStateCodec {
         for (PotionEffect effect : player.getActivePotionEffects()) player.removePotionEffect(effect.getType());
         for (String raw : section.getStringList("effects")) addEffect(player, raw);
         player.updateInventory();
-        return teleported;
+
+        String worldName = section.getString("location.world");
+        World world = worldName == null ? null : Bukkit.getWorld(worldName);
+        if (world == null) return false;
+
+        Location destination = new Location(world,
+                section.getDouble("location.x"), section.getDouble("location.y"), section.getDouble("location.z"),
+                (float) section.getDouble("location.yaw"), (float) section.getDouble("location.pitch"));
+
+        // Make sure the destination exists in memory before teleporting. This is especially
+        // useful when the admin and legit profiles are far apart or in different worlds.
+        world.getChunkAt(destination.getBlockX() >> 4, destination.getBlockZ() >> 4).load();
+        return player.teleport(destination);
     }
 
     static BigDecimal money(ConfigurationSection section) { return number(section, "economy.money"); }
