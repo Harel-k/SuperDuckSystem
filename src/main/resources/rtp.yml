@@ -1,0 +1,62 @@
+# QDucks RTP
+# Uses the old BetterRTP values as gameplay settings only.
+# The player-facing flow is intentionally clean: action bar countdown/search/success,
+# no coordinate spam, no explosion sounds, no particles, no blindness/invisibility.
+
+world:
+  target: world
+  allowed-source-worlds:
+    - world
+    - spawn
+  center-x: 0
+  center-z: 0
+  min-radius: 1000
+  max-radius: 15000
+  min-y: -64
+  max-y: 320
+
+cooldown:
+  seconds: 300
+
+warmup:
+  seconds: 3
+  cancel-on-move: true
+  # Looking around does not cancel; actual movement does.
+  move-tolerance-squared: 0.01
+
+performance:
+  # Matches the current QDucks setting. If launch testing shows generation spikes,
+  # lower this to 1 or 0 without changing the RTP range or safety rules.
+  preload-radius: 2
+
+safety:
+  max-attempts: 32
+  respect-worldguard: true
+  post-teleport-invulnerability-seconds: 5
+  unsafe-blocks:
+    - WATER
+    - LAVA
+    - BUBBLE_COLUMN
+    - CACTUS
+    - BEDROCK
+    - OAK_LEAVES
+    - SPRUCE_LEAVES
+    - BIRCH_LEAVES
+    - JUNGLE_LEAVES
+    - ACACIA_LEAVES
+    - DARK_OAK_LEAVES
+    - MANGROVE_LEAVES
+    - CHERRY_LEAVES
+    - AZALEA_LEAVES
+    - FLOWERING_AZALEA_LEAVES
+    - PALE_OAK_LEAVES
+    - KELP
+    - KELP_PLANT
+    - MAGMA_BLOCK
+    - POWDER_SNOW
+    - FIRE
+    - SOUL_FIRE
+    - CAMPFIRE
+    - SOUL_CAMPFIRE
+    - SWEET_BERRY_BUSH
+    - POINTED_DRIPSTONE
