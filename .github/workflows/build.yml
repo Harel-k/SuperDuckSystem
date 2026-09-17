@@ -74,15 +74,56 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Delete only the old release. Do not use --cleanup-tag here: tag cleanup can
-          # race with recreating the same tag and leave the new release orphaned/draft.
-          gh release delete dev-latest --repo "$GITHUB_REPOSITORY" --yes || true
-
-          # Move/recreate the stable tag explicitly at the commit we just built.
+          # Keep the stable tag pinned to the exact commit that produced this jar.
           git tag -f dev-latest "$GITHUB_SHA"
           git push origin refs/tags/dev-latest --force
 
-          gh release create dev-latest build/libs/SuperDuckSystem.jar \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "SuperDuckSystem - Latest Dev Build" \
-            --notes "Automatically built from the latest successful dev commit. Download SuperDuckSystem.jar below and upload it to the server's plugins folder."
+          TITLE="SuperDuckSystem - Latest Dev Build"
+          NOTES="Automatically built from the latest successful dev commit. Download SuperDuckSystem.jar below and upload it to the server's plugins folder."
+
+          # Find the release through the releases collection so this also finds and
+          # repairs a draft/orphaned dev-latest release left by an interrupted run.
+          RELEASE_ID="$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.tag_name == "dev-latest") | .id' | head -n 1)"
+
+          if [ -z "$RELEASE_ID" ]; then
+            RELEASE_ID="$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name='dev-latest' \
+              -f name="$TITLE" \
+              -f body="$NOTES" \
+              -F draft=false \
+              -F prerelease=false \
+              --jq '.id')"
+          else
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+              -f tag_name='dev-latest' \
+              -f name="$TITLE" \
+              -f body="$NOTES" \
+              -F draft=false \
+              -F prerelease=false >/dev/null
+          fi
+
+          # Upload under a unique temporary name first. Only after the upload is
+          # confirmed do we remove the previous stable asset and rename this one.
+          # That prevents a failed upload from leaving dev-latest with no jar.
+          TEMP_NAME="SuperDuckSystem-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.jar"
+          cp build/libs/SuperDuckSystem.jar "/tmp/$TEMP_NAME"
+          gh release upload dev-latest "/tmp/$TEMP_NAME" --repo "$GITHUB_REPOSITORY"
+
+          NEW_ASSET_ID="$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq ".[] | select(.name == \"$TEMP_NAME\") | .id" | head -n 1)"
+          if [ -z "$NEW_ASSET_ID" ]; then
+            echo "Uploaded asset could not be found. Refusing to replace the stable jar."
+            exit 1
+          fi
+
+          while IFS= read -r OLD_ASSET_ID; do
+            [ -z "$OLD_ASSET_ID" ] && continue
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$OLD_ASSET_ID"
+          done < <(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq '.[] | select(.name == "SuperDuckSystem.jar") | .id')
+
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/assets/$NEW_ASSET_ID" \
+            -f name='SuperDuckSystem.jar' >/dev/null
+
+          echo "Published dev-latest from $GITHUB_SHA"
