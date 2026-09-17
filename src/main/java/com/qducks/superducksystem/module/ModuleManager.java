@@ -48,7 +48,7 @@ public final class ModuleManager {
         String id = module.id().toLowerCase();
         if (modules.containsKey(id)) throw new IllegalArgumentException("Duplicate module id: " + id);
         modules.put(id, module);
-        boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse");
+        boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse") || id.equals("rtp");
         if (plugin.getConfig().getBoolean("modules." + id, defaultEnabled)) module.enable();
     }
 
@@ -57,7 +57,7 @@ public final class ModuleManager {
     public void reload() {
         for (SuperDuckModule module : modules.values()) {
             String id = module.id().toLowerCase();
-            boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse");
+            boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse") || id.equals("rtp");
             if (!plugin.getConfig().getBoolean("modules." + id, defaultEnabled)) continue;
             try { module.reload(); }
             catch (Exception exception) { plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage()); }
