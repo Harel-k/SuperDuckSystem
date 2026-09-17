@@ -5,8 +5,8 @@ abuse-mode:
   # Used the first time an admin profile is created.
   default-gamemode: CREATIVE
 
-  # Abuse Mode is trusted admin mode: normal world interactions are allowed.
-  # Admins can drop/pick up items, use containers, and build normally.
+  # Abuse Mode is trusted admin mode. SuperDuckSystem does not restrict commands,
+  # item movement, containers, building, drops, or normal admin gameplay while ON.
 
   # Runtime bypasses while Abuse Mode is ON.
   # Grim/Boar entries are harmless until those anti-cheats are installed.
@@ -15,18 +15,6 @@ abuse-mode:
     - duckypvp.combat.bypass
     - grim.disabled
     - boar.exempt
-
-  # Commands that could move admin-profile resources into another player's legit economy/world.
-  blocked-transfer-commands:
-    - pay
-    - sell
-    - ah
-    - auctionhouse
-    - order
-    - orders
-    - trade
-    - qs
-    - quickshop
 
 legit-mode:
   # These are blocked for managed staff while Abuse Mode is OFF, even if OP/LuckPerms grants them.
@@ -128,4 +116,3 @@ legit-mode:
 
 messages:
   legit-command-blocked: "&a&lLEGIT MODE &8» &7Enable &f/abuse on &7to use admin commands."
-  abuse-transfer-blocked: "&c&lABUSE MODE &8» &7That command could move admin resources into another player's legit economy/world."
