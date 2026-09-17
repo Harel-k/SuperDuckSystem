@@ -9,6 +9,7 @@ import com.qducks.superducksystem.economy.EconomyModule;
 import com.qducks.superducksystem.maintenance.MaintenanceModule;
 import com.qducks.superducksystem.order.OrderModule;
 import com.qducks.superducksystem.reward.RewardsModule;
+import com.qducks.superducksystem.rtp.RtpModule;
 import com.qducks.superducksystem.settings.SettingsModule;
 import com.qducks.superducksystem.shop.ShopModule;
 import com.qducks.superducksystem.stats.StatsModule;
@@ -36,6 +37,7 @@ public final class ModuleManager {
         register(new CustomToolsModule(plugin));
         register(new StatsModule(plugin));
         register(new RewardsModule(plugin, plugin.rewards()));
+        register(new RtpModule(plugin));
         register(new CombatModule(plugin));
         register(new MaintenanceModule(plugin));
         register(new AdminModeModule(plugin));
