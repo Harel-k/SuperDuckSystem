@@ -23,6 +23,11 @@ commands:
     usage: /abuse <on|off|status> [player]
     aliases: [adminmode]
     permission: superduck.abuse.toggle
+  rtp:
+    description: Teleport to a random safe location in the survival world
+    usage: /rtp
+    aliases: [sdsrtp]
+    permission: superduck.rtp
   balance:
     description: View your money balance
     usage: /balance [player]
@@ -99,6 +104,8 @@ commands:
 
 permissions:
   superduck.command: {default: true}
+  superduck.rtp: {default: true}
+  superduck.rtp.bypass.cooldown: {default: false}
   superduck.balance: {default: true}
   superduck.balance.others: {default: op}
   superduck.baltop: {default: true}
@@ -122,6 +129,7 @@ permissions:
   superduck.maintenance.whitelist: {default: false}
   superduck.abuse.toggle: {default: op}
   superduck.abuse.others: {default: op}
+  superduck.admin.rtp: {default: op}
   superduck.admin.maintenancemode: {default: op}
   superduck.admin.keys: {default: op}
   superduck.admin.items: {default: op}
