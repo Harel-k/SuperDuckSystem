@@ -14,6 +14,7 @@ modules:
   custom-tools: true
   stats: true
   rewards: true
+  rtp: true
   combat: true
   maintenance: true
   abuse: true
@@ -42,6 +43,7 @@ combat:
   blocked-commands:
     - spawn
     - rtp
+    - sdsrtp
     - wild
     - home
     - back
