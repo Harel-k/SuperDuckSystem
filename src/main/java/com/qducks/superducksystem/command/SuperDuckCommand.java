@@ -73,9 +73,12 @@ public final class SuperDuckCommand implements CommandExecutor, TabCompleter {
         if (!sender.hasPermission("superduck.admin.reload")) return denied(sender);
         plugin.configs().reload();
         plugin.rankPerks().reloadOnlinePlayers();
-        plugin.modules().reload();
+        boolean restartRequired = plugin.modules().reload();
         plugin.database().reloadBackupSchedule();
         sender.sendMessage(message("admin.reloaded", "<green>SuperDuckSystem configuration reloaded.</green>", "superduck"));
+        if (restartRequired) {
+            sender.sendRichMessage("<yellow>One or more module enable/disable changes need a full Paper restart to take effect safely.</yellow>");
+        }
         return true;
     }
 
