@@ -40,7 +40,7 @@ commands:
   ducks:
     description: View your Ducks currency
     usage: /ducks [player]
-    aliases: [bal, money]
+    aliases: [duckbal, duckbalance]
     permission: superduck.ducks
   pay:
     description: Pay another online player
