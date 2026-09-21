@@ -17,11 +17,14 @@ import com.qducks.superducksystem.tool.CustomToolsModule;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 public final class ModuleManager {
     private final SuperDuckSystem plugin;
     private final Map<String, SuperDuckModule> modules = new LinkedHashMap<>();
+    private final Set<String> enabledModules = new LinkedHashSet<>();
 
     public ModuleManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -48,26 +51,53 @@ public final class ModuleManager {
         String id = module.id().toLowerCase();
         if (modules.containsKey(id)) throw new IllegalArgumentException("Duplicate module id: " + id);
         modules.put(id, module);
-        boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse") || id.equals("rtp");
-        if (plugin.getConfig().getBoolean("modules." + id, defaultEnabled)) module.enable();
+        if (configuredEnabled(id)) {
+            module.enable();
+            enabledModules.add(id);
+        }
     }
 
     public Map<String, SuperDuckModule> all() { return Collections.unmodifiableMap(modules); }
 
     public void reload() {
-        for (SuperDuckModule module : modules.values()) {
-            String id = module.id().toLowerCase();
-            boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse") || id.equals("rtp");
-            if (!plugin.getConfig().getBoolean("modules." + id, defaultEnabled)) continue;
-            try { module.reload(); }
-            catch (Exception exception) { plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage()); }
+        for (Map.Entry<String, SuperDuckModule> entry : modules.entrySet()) {
+            String id = entry.getKey();
+            SuperDuckModule module = entry.getValue();
+            boolean shouldBeEnabled = configuredEnabled(id);
+            boolean isEnabled = enabledModules.contains(id);
+
+            try {
+                if (shouldBeEnabled && !isEnabled) {
+                    module.enable();
+                    enabledModules.add(id);
+                    plugin.getLogger().info("Module " + module.id() + " enabled after configuration reload.");
+                } else if (!shouldBeEnabled && isEnabled) {
+                    module.disable();
+                    enabledModules.remove(id);
+                    plugin.getLogger().info("Module " + module.id() + " disabled after configuration reload.");
+                } else if (shouldBeEnabled) {
+                    module.reload();
+                }
+            } catch (Exception exception) {
+                plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage());
+            }
         }
     }
 
     public void shutdown() {
-        for (SuperDuckModule module : modules.values()) {
-            try { module.disable(); }
-            catch (Exception exception) { plugin.getLogger().severe("Failed to disable module " + module.id() + ": " + exception.getMessage()); }
+        for (Map.Entry<String, SuperDuckModule> entry : modules.entrySet()) {
+            if (!enabledModules.contains(entry.getKey())) continue;
+            try {
+                entry.getValue().disable();
+            } catch (Exception exception) {
+                plugin.getLogger().severe("Failed to disable module " + entry.getValue().id() + ": " + exception.getMessage());
+            }
         }
+        enabledModules.clear();
+    }
+
+    private boolean configuredEnabled(String id) {
+        boolean defaultEnabled = id.equals("maintenance") || id.equals("abuse") || id.equals("rtp");
+        return plugin.getConfig().getBoolean("modules." + id, defaultEnabled);
     }
 }
