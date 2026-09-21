@@ -59,29 +59,31 @@ public final class ModuleManager {
 
     public Map<String, SuperDuckModule> all() { return Collections.unmodifiableMap(modules); }
 
-    public void reload() {
+    public boolean reload() {
+        boolean restartRequired = false;
         for (Map.Entry<String, SuperDuckModule> entry : modules.entrySet()) {
             String id = entry.getKey();
             SuperDuckModule module = entry.getValue();
             boolean shouldBeEnabled = configuredEnabled(id);
             boolean isEnabled = enabledModules.contains(id);
 
+            if (shouldBeEnabled != isEnabled) {
+                restartRequired = true;
+                plugin.getLogger().warning("Module " + module.id()
+                        + " enable/disable change requires a full server restart; keeping the current runtime state.");
+                continue;
+            }
+            if (!isEnabled) {
+                continue;
+            }
+
             try {
-                if (shouldBeEnabled && !isEnabled) {
-                    module.enable();
-                    enabledModules.add(id);
-                    plugin.getLogger().info("Module " + module.id() + " enabled after configuration reload.");
-                } else if (!shouldBeEnabled && isEnabled) {
-                    module.disable();
-                    enabledModules.remove(id);
-                    plugin.getLogger().info("Module " + module.id() + " disabled after configuration reload.");
-                } else if (shouldBeEnabled) {
-                    module.reload();
-                }
+                module.reload();
             } catch (Exception exception) {
                 plugin.getLogger().severe("Failed to reload module " + module.id() + ": " + exception.getMessage());
             }
         }
+        return restartRequired;
     }
 
     public void shutdown() {
