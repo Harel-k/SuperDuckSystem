@@ -13,10 +13,12 @@ final class EnforcementService {
 
     private final SuperDuckClientGuard plugin;
     private final StrikeStore strikes;
+    private final WipeCoordinator wipeCoordinator;
 
-    EnforcementService(SuperDuckClientGuard plugin, StrikeStore strikes) {
+    EnforcementService(SuperDuckClientGuard plugin, StrikeStore strikes, WipeCoordinator wipeCoordinator) {
         this.plugin = plugin;
         this.strikes = strikes;
+        this.wipeCoordinator = wipeCoordinator;
     }
 
     void handleConfirmed(Player player, List<HackDefinition> detected) {
@@ -64,10 +66,39 @@ final class EnforcementService {
             return;
         }
 
-        // The destructive path is deliberately fail-closed until WipeCoordinator is added.
-        plugin.getLogger().severe("Destructive wipe was enabled before the wipe coordinator was installed. "
-                + "Punishment blocked for safety.");
-        alertStaff("&4[ClientGuard] Safety block: wipe coordinator is not installed yet.");
+        String playerName = player.getName();
+        String banCommand = plugin.getConfig().getString(
+                "enforcement.hacked-client.ban-command",
+                "tempban {player} 14d Illegal client detected: {mods}"
+        );
+
+        wipeCoordinator.wipe(player, detected).whenComplete((outcome, error) ->
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (error != null) {
+                        String message = rootMessage(error);
+                        plugin.getLogger().severe("ClientGuard wipe failed for " + playerName
+                                + "; 14-day ban was NOT applied: " + message);
+                        alertStaff("&4[ClientGuard] &cWipe failed for " + playerName
+                                + "; 14-day ban was NOT applied. Check console.");
+                        return;
+                    }
+
+                    if (outcome.hasWarnings()) {
+                        plugin.getLogger().severe("ClientGuard wipe for " + playerName
+                                + " completed with " + outcome.failedExternalCommands()
+                                + " failed external wipe command(s).");
+                        alertStaff("&4[ClientGuard] &cWARNING: " + playerName
+                                + " was wiped, but an external wipe command failed. "
+                                + "Check homes/external data manually.");
+                    }
+
+                    dispatch(banCommand, player, detected);
+                    alertStaff("&c[ClientGuard] " + playerName
+                            + " received the confirmed hacked-client 14-day sanction. "
+                            + "Recovery snapshot=" + outcome.playerSnapshot().getName()
+                            + ", SDS backup=" + outcome.databaseBackup().getName());
+                })
+        );
     }
 
     private void handleFreecam(Player player) {
@@ -129,6 +160,16 @@ final class EnforcementService {
         return definitions.stream()
                 .map(HackDefinition::displayName)
                 .collect(Collectors.joining(", "));
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current.getMessage() == null
+                ? current.getClass().getSimpleName()
+                : current.getMessage();
     }
 
     void alertStaff(String legacyMessage) {
