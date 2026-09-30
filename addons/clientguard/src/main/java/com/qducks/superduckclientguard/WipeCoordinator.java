@@ -2,6 +2,7 @@ package com.qducks.superduckclientguard;
 
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -93,6 +94,8 @@ final class WipeCoordinator {
                     statement.setString(1, id);
                     statement.executeUpdate();
                 }
+                zeroBalance(connection, id, "MONEY");
+                zeroBalance(connection, id, "DUCKS");
             }
 
             deleteBy(connection, "crate_keys", "uuid", id);
@@ -128,6 +131,16 @@ final class WipeCoordinator {
             throw exception;
         } finally {
             connection.setAutoCommit(previousAutoCommit);
+        }
+    }
+
+    private void zeroBalance(Connection connection, String uuid, String currency) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO balances(uuid, currency, amount) VALUES(?, ?, '0') "
+                        + "ON CONFLICT(uuid, currency) DO UPDATE SET amount='0'")) {
+            statement.setString(1, uuid);
+            statement.setString(2, currency);
+            statement.executeUpdate();
         }
     }
 
@@ -206,6 +219,10 @@ final class WipeCoordinator {
         player.setLevel(0);
         player.setTotalExperience(0);
 
+        player.getPersistentDataContainer().remove(
+                new NamespacedKey(plugin.superDuckSystem(), "rtp_last_success")
+        );
+
         if (plugin.getConfig().getBoolean(
                 "enforcement.hacked-client.destructive-wipe.reset-advancements", true)) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
@@ -213,6 +230,7 @@ final class WipeCoordinator {
         }
 
         player.updateInventory();
+        player.saveData();
     }
 
     private <T> CompletableFuture<T> onMain(Supplier<CompletableFuture<T>> supplier) {
