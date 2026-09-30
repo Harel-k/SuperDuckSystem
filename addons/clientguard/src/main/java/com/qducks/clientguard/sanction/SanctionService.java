@@ -90,25 +90,28 @@ public final class SanctionService {
                 + "</yellow> before any wipe.</gold>");
 
         final String duckyBackup;
+        final HomeStateAdapter.HomeSnapshot homeSnapshot;
         try {
             duckyBackup = duckyPvp.exportBackup(uuid);
+            homeSnapshot = homes.capture(player);
         } catch (Throwable error) {
-            failBeforeWipe(player, "could not snapshot DuckyPVP state: " + rootMessage(error));
+            failBeforeWipe(player, "could not snapshot external state: " + rootMessage(error));
             return;
         }
 
-        snapshots.create(player, detections, duckyBackup).whenComplete((snapshot, snapshotError) ->
+        snapshots.create(player, detections, duckyBackup, homeSnapshot).whenComplete((snapshot, snapshotError) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (snapshotError != null) {
                         failBeforeWipe(player, "snapshot failed: " + rootMessage(snapshotError));
                         return;
                     }
-                    continueAfterSnapshot(player, detections, snapshot);
+                    continueAfterSnapshot(player, detections, snapshot, homeSnapshot);
                 })
         );
     }
 
-    private void continueAfterSnapshot(Player player, List<HackDefinition> detections, File snapshot) {
+    private void continueAfterSnapshot(Player player, List<HackDefinition> detections, File snapshot,
+                                       HomeStateAdapter.HomeSnapshot homeSnapshot) {
         UUID uuid = player.getUniqueId();
 
         if (!player.isOnline()) {
@@ -121,8 +124,8 @@ public final class SanctionService {
             return;
         }
 
-        if (!homes.snapshotAndWipe(player)) {
-            failBeforeWipe(player, "homes could not be safely snapshotted+wiped; snapshot kept");
+        if (!homes.wipe(player, homeSnapshot)) {
+            failAfterSnapshot(player, snapshot, "homes could not be fully wiped; no SDS wipe was attempted");
             return;
         }
 
