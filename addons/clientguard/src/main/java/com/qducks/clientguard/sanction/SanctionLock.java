@@ -1,5 +1,6 @@
 package com.qducks.clientguard.sanction;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -27,5 +28,16 @@ public final class SanctionLock {
 
     public void forget(UUID uuid) {
         previousInvulnerable.remove(uuid);
+    }
+
+    public void unlockAll() {
+        for (UUID uuid : java.util.List.copyOf(previousInvulnerable.keySet())) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                unlock(player);
+            } else {
+                previousInvulnerable.remove(uuid);
+            }
+        }
     }
 }
