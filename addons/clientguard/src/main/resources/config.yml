@@ -20,6 +20,12 @@ enforcement:
   freecam-warning-1: "Freecam is not allowed on QDucks SMP. Remove it before reconnecting."
   freecam-warning-2: "FINAL WARNING: remove Freecam before reconnecting or you will receive a 3-day ban."
 
+external:
+  homes:
+    # Hard-cheat wipes must include homes. Until an adapter for the server's
+    # actual homes plugin is configured, destructive sanctions stay blocked.
+    required: true
+
 policy:
   # Confirmed hacked clients. These will use the 14-day + wipe route once
   # destructive enforcement is enabled.
