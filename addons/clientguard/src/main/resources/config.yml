@@ -22,9 +22,10 @@ enforcement:
 
 external:
   homes:
-    # Hard-cheat wipes must include homes. Until an adapter for the server's
-    # actual homes plugin is configured, destructive sanctions stay blocked.
+    # auto supports EssentialsX and HuskHomes. If multiple providers are
+    # enabled, set this explicitly to essentials or huskhomes.
     required: true
+    provider: auto
 
 policy:
   # Confirmed hacked clients. These will use the 14-day + wipe route once
