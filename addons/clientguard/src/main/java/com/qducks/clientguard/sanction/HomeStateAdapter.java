@@ -122,10 +122,11 @@ public final class HomeStateAdapter {
         Method getHome = user.getClass().getMethod("getHome", String.class);
 
         YamlConfiguration yaml = baseYaml("EssentialsX", player);
+        int index = 0;
         for (String name : names) {
             Object value = getHome.invoke(user, name);
             if (!(value instanceof Location location)) continue;
-            String root = "homes." + safeKey(name);
+            String root = "homes." + index++;
             yaml.set(root + ".name", name);
             yaml.set(root + ".world", location.getWorld() == null ? "" : location.getWorld().getName());
             yaml.set(root + ".x", location.getX());
@@ -194,10 +195,11 @@ public final class HomeStateAdapter {
             YamlConfiguration yaml = baseYaml("HuskHomes", player);
             List<String> names = new ArrayList<>();
 
+            int index = 0;
             for (Object home : homes) {
                 String name = String.valueOf(home.getClass().getMethod("getName").invoke(home));
                 names.add(name);
-                String root = "homes." + safeKey(name);
+                String root = "homes." + index++;
                 yaml.set(root + ".name", name);
                 yaml.set(root + ".uuid", String.valueOf(home.getClass().getMethod("getUuid").invoke(home)));
                 yaml.set(root + ".server", String.valueOf(home.getClass().getMethod("getServer").invoke(home)));
@@ -329,10 +331,6 @@ public final class HomeStateAdapter {
         yaml.set("player-uuid", player.getUniqueId().toString());
         yaml.set("player-name", player.getName());
         return yaml;
-    }
-
-    private String safeKey(String name) {
-        return name.replace(".", "_").replace("[", "_").replace("]", "_");
     }
 
     private enum Provider {
