@@ -32,7 +32,7 @@ jobs:
           gradle-version: '8.14.3'
 
       - name: Build
-        run: gradle clean build --stacktrace
+        run: gradle clean build :addons:clientguard:build --stacktrace
 
       - name: Verify shaded runtime
         shell: bash
@@ -48,6 +48,19 @@ jobs:
           jar tf "$JAR" | grep -qx 'org/sqlite/JDBC.class'
           echo "Verified plugin.yml and bundled SQLite JDBC driver in $JAR"
 
+      - name: Verify ClientGuard addon
+        shell: bash
+        run: |
+          set -euo pipefail
+          ADDON_JAR="$(find addons/clientguard/build/libs -maxdepth 1 -type f -name 'SuperDuckClientGuard-*.jar' | head -n 1)"
+          if [ -z "$ADDON_JAR" ]; then
+            echo "SuperDuckClientGuard jar is missing."
+            ls -lah addons/clientguard/build/libs || true
+            exit 1
+          fi
+          jar tf "$ADDON_JAR" | grep -qx 'plugin.yml'
+          echo "Verified ClientGuard plugin.yml in $ADDON_JAR"
+
       - name: Prepare easy-download jar
         shell: bash
         run: |
@@ -60,11 +73,24 @@ jobs:
           fi
           cp "$JAR" build/libs/SuperDuckSystem.jar
 
+          ADDON_JAR="$(find addons/clientguard/build/libs -maxdepth 1 -type f -name 'SuperDuckClientGuard-*.jar' | head -n 1)"
+          if [ -z "$ADDON_JAR" ]; then
+            echo "Could not find the SuperDuckClientGuard jar."
+            exit 1
+          fi
+          cp "$ADDON_JAR" addons/clientguard/build/libs/SuperDuckClientGuard.jar
+
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
           name: SuperDuckSystem-latest
           path: build/libs/SuperDuckSystem.jar
+
+      - name: Upload ClientGuard artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuperDuckClientGuard-latest
+          path: addons/clientguard/build/libs/SuperDuckClientGuard.jar
 
       - name: Publish latest dev jar
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
