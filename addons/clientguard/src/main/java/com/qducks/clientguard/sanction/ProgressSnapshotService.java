@@ -49,7 +49,7 @@ public final class ProgressSnapshotService {
         this.plugin = plugin;
     }
 
-    public CompletableFuture<File> create(Player player, List<HackDefinition> detections) {
+    public CompletableFuture<File> create(Player player, List<HackDefinition> detections, String duckyPvpBackupYaml) {
         if (!Bukkit.isPrimaryThread()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Snapshot capture must start on the Paper thread"));
         }
@@ -80,10 +80,16 @@ public final class ProgressSnapshotService {
         snapshot.set("minecraft.location.y", player.getY());
         snapshot.set("minecraft.location.z", player.getZ());
 
-        // External plugin state (homes / DuckyPVP backups) is intentionally not
-        // claimed as recoverable until their dedicated adapters are implemented.
+        // Homes remain blocked until the actual homes-provider adapter exists.
         snapshot.set("external.homes.captured", false);
-        snapshot.set("external.duckypvp-backup.captured", false);
+
+        boolean duckyCaptured = duckyPvpBackupYaml != null;
+        snapshot.set("external.duckypvp-backup.captured", duckyCaptured);
+        snapshot.set("external.duckypvp-backup.present",
+                duckyCaptured && !duckyPvpBackupYaml.isBlank());
+        if (duckyCaptured && !duckyPvpBackupYaml.isBlank()) {
+            snapshot.set("external.duckypvp-backup.yaml", duckyPvpBackupYaml);
+        }
 
         return plugin.superDuckSystem().database().submit(connection -> {
             for (QuerySpec spec : SDS_QUERIES) {
