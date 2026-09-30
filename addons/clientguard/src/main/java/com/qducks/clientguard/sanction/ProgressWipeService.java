@@ -69,7 +69,7 @@ public final class ProgressWipeService {
         }
 
         player.getInventory().clear();
-        player.getInventory().setArmorContents(null);
+        player.getInventory().setArmorContents(new org.bukkit.inventory.ItemStack[4]);
         player.getInventory().setItemInOffHand(null);
         player.getEnderChest().clear();
         player.getInventory().setHeldItemSlot(0);
