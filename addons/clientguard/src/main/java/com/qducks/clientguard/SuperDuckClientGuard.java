@@ -23,6 +23,7 @@ public final class SuperDuckClientGuard extends JavaPlugin {
     private ClientScanner scanner;
     private PolicyEngine policy;
     private SanctionService sanctions;
+    private SanctionLock sanctionLock;
 
     @Override
     public void onEnable() {
@@ -37,7 +38,7 @@ public final class SuperDuckClientGuard extends JavaPlugin {
         this.superDuckSystem = sds;
 
         StrikeStore strikeStore = new StrikeStore(this);
-        SanctionLock sanctionLock = new SanctionLock();
+        this.sanctionLock = new SanctionLock();
         ProgressSnapshotService snapshotService = new ProgressSnapshotService(this);
         ProgressWipeService wipeService = new ProgressWipeService(this);
         DuckyPvpAdapter duckyPvpAdapter = new DuckyPvpAdapter(this);
@@ -67,6 +68,7 @@ public final class SuperDuckClientGuard extends JavaPlugin {
     @Override
     public void onDisable() {
         if (scanner != null) scanner.shutdown();
+        if (sanctionLock != null) sanctionLock.unlockAll();
     }
 
     public SuperDuckSystem superDuckSystem() {
