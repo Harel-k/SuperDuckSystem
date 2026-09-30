@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 final class SignProbe {
     private SignProbe() {}
@@ -94,11 +95,11 @@ final class SignProbe {
         }
     }
 
-    static Location findAirBlock(Player player) {
+    static Location findAirBlock(Player player, Predicate<Location> reserveCandidate) {
         Location base = player.getLocation().clone();
         for (int dy = 1; dy <= 5; dy++) {
             Location loc = base.clone().add(0, dy, 0);
-            if (loc.getBlock().getType().isAir()) return loc;
+            if (loc.getBlock().getType().isAir() && reserveCandidate.test(loc)) return loc;
         }
 
         int[][] offsets = {
@@ -108,7 +109,7 @@ final class SignProbe {
         };
         for (int[] offset : offsets) {
             Location loc = base.clone().add(offset[0], offset[1], offset[2]);
-            if (loc.getBlock().getType().isAir()) return loc;
+            if (loc.getBlock().getType().isAir() && reserveCandidate.test(loc)) return loc;
         }
         return null;
     }
