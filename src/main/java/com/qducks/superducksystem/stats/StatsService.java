@@ -45,6 +45,16 @@ public final class StatsService {
     }
 
     public boolean ready() { return ready; }
+
+    /**
+     * Drops the in-memory session without persisting it. Intended for trusted
+     * administrative integrations performing a deliberate full progress reset.
+     */
+    public void discardSessionAndCache(UUID uuid) {
+        sessionStarted.remove(uuid);
+        cache.remove(uuid);
+    }
+
     public void onJoin(Player player) { sessionStarted.put(player.getUniqueId(), System.currentTimeMillis()); load(player.getUniqueId()); }
     public void onQuit(Player player) {
         UUID uuid = player.getUniqueId();

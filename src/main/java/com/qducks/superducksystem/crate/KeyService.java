@@ -55,6 +55,16 @@ public final class KeyService implements Listener {
         return schemaReady;
     }
 
+    /**
+     * Drops in-memory key/session state without changing persistent storage.
+     * Used by trusted integrations immediately before an intentional data reset.
+     */
+    public void discardSessionAndCache(UUID uuid) {
+        sessions.remove(uuid);
+        loading.remove(uuid);
+        balances.keySet().removeIf(account -> account.uuid.equals(uuid));
+    }
+
     public int cachedKeys(UUID uuid, String keyId) {
         return balances.getOrDefault(new KeyAccount(uuid, normalizeKey(keyId)), 0);
     }

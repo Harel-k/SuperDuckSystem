@@ -1,0 +1,136 @@
+enabled: true
+
+scan:
+  on-join: true
+  join-delay-ticks: 80
+  timeout-ticks: 200
+  between-batches-ticks: 5
+  double-check: true
+  bedrock-name-prefixes: [".", "*"]
+
+# Destructive enforcement stays OFF until the wipe coordinator and recovery
+# snapshot path have passed live validation.
+enforcement:
+  enabled: false
+  hard-cheat-ban-days: 14
+  freecam-ban-days: 3
+  freecam-warnings-before-ban: 2
+  hard-cheat-tempban-command: "tempban {player} 14d Client modifications are not allowed ({mods})"
+  freecam-tempban-command: "tempban {player} 3d Freecam is not allowed on QDucks SMP"
+  freecam-warning-1: "Freecam is not allowed on QDucks SMP. Remove it before reconnecting."
+  freecam-warning-2: "FINAL WARNING: remove Freecam before reconnecting or you will receive a 3-day ban."
+
+external:
+  homes:
+    # auto supports EssentialsX and HuskHomes. If multiple providers are
+    # enabled, set this explicitly to essentials or huskhomes.
+    required: true
+    provider: auto
+
+policy:
+  # Confirmed hacked clients. These will use the 14-day + wipe route once
+  # destructive enforcement is enabled.
+  hard-cheats:
+    - meteor-client
+    - liquidbounce
+    - wurst
+    - bleachhack
+    - aristois
+    - coffee
+    - killaura-fabric
+    - lumina
+
+  # Freecam has its own warning ladder and NEVER wipes progress.
+  freecam:
+    - freecam
+
+  # Detected but staff-review only for now.
+  review-only:
+    - xray-fabric
+    - chestesp
+    - autofish
+    - autoswitch
+    - world-downloader
+    - autoclicker-fabric
+    - antiafk
+    - auto-clicker-mc
+    - baritone
+    - seedcrackerx
+
+hacks:
+  meteor-client:
+    display-name: "Meteor Client"
+    key: "key.meteor-client.open-gui"
+    mode: METEOR
+  liquidbounce:
+    display-name: "LiquidBounce"
+    key: "liquidbounce.module.killaura.name"
+    mode: TRANSLATE
+  freecam:
+    display-name: "Freecam"
+    key: "key.freecam.toggle"
+    mode: KEYBIND
+  wurst:
+    display-name: "Wurst Client"
+    key: "key.wurst.zoom"
+    mode: KEYBIND
+  xray-fabric:
+    display-name: "XRay (Fabric)"
+    key: "xray.config.toggle"
+    mode: KEYBIND
+  chestesp:
+    display-name: "ChestESP"
+    key: "key.chestesp.toggle"
+    mode: KEYBIND
+  killaura-fabric:
+    display-name: "KillAura (Fabric)"
+    key: "key.killaura"
+    mode: KEYBIND
+  autofish:
+    display-name: "AutoFish"
+    key: "key.autofish.open_gui"
+    mode: KEYBIND
+  lumina:
+    display-name: "Lumina"
+    key: "key.lumina.open_click_gui"
+    mode: KEYBIND
+  autoswitch:
+    display-name: "AutoSwitch"
+    key: "key.autoswitch.toggle"
+    mode: KEYBIND
+  bleachhack:
+    display-name: "BleachHack"
+    key: "bleachhack.module.killaura"
+    mode: TRANSLATE
+  aristois:
+    display-name: "Aristois"
+    key: "emc.module.killaura.name"
+    mode: TRANSLATE
+  coffee:
+    display-name: "Coffee Client"
+    key: "coffee.module.killaura.name"
+    mode: TRANSLATE
+  world-downloader:
+    display-name: "World Downloader"
+    key: "key.wdl.startStop"
+    mode: TRANSLATE
+  autoclicker-fabric:
+    display-name: "AutoClicker (Fabric)"
+    key: "autoclicker-fabric.hud.holding"
+    mode: TRANSLATE
+  antiafk:
+    display-name: "AntiAFK"
+    key: "key.antiafk.toggle"
+    mode: TRANSLATE
+  auto-clicker-mc:
+    display-name: "Auto Clicker"
+    key: "key.auto-clicker_.toggle"
+    mode: KEYBIND
+  baritone:
+    display-name: "Baritone"
+    key: "baritone.setting.allowBreak"
+    mode: TRANSLATE
+  seedcrackerx:
+    display-name: "SeedCrackerX"
+    key: "cracker.already"
+    mode: TRANSLATE
