@@ -3,6 +3,7 @@ package com.qducks.clientguard.command;
 import com.qducks.clientguard.SuperDuckClientGuard;
 import com.qducks.clientguard.detect.ClientScanner;
 import com.qducks.clientguard.policy.PolicyEngine;
+import com.qducks.clientguard.sanction.SanctionService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -18,11 +19,14 @@ public final class ClientGuardCommand implements CommandExecutor, TabCompleter {
     private final SuperDuckClientGuard plugin;
     private final ClientScanner scanner;
     private final PolicyEngine policy;
+    private final SanctionService sanctions;
 
-    public ClientGuardCommand(SuperDuckClientGuard plugin, ClientScanner scanner, PolicyEngine policy) {
+    public ClientGuardCommand(SuperDuckClientGuard plugin, ClientScanner scanner, PolicyEngine policy,
+                              SanctionService sanctions) {
         this.plugin = plugin;
         this.scanner = scanner;
         this.policy = policy;
+        this.sanctions = sanctions;
     }
 
     @Override
@@ -33,12 +37,18 @@ public final class ClientGuardCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0 || args[0].equalsIgnoreCase("status")) {
+            boolean enforcement = plugin.getConfig().getBoolean("enforcement.enabled", false);
             sender.sendRichMessage("<dark_aqua>ClientGuard</dark_aqua> <gray>scanner:</gray> "
                     + (plugin.getConfig().getBoolean("enabled", true) ? "<green>ON</green>" : "<red>OFF</red>")
                     + " <gray>| enforcement:</gray> "
-                    + (plugin.getConfig().getBoolean("enforcement.enabled", false)
-                    ? "<yellow>ON (hard-wipe route still unarmed)</yellow>"
-                    : "<green>SAFE/MONITOR</green>"));
+                    + (enforcement ? "<yellow>ON</yellow>" : "<green>SAFE/MONITOR</green>")
+                    + " <gray>| hard-sanction-ready:</gray> "
+                    + (sanctions.ready() ? "<green>YES</green>" : "<red>NO</red>"));
+            if (!sanctions.ready()) {
+                for (String blocker : sanctions.blockers()) {
+                    sender.sendRichMessage("<red> - " + blocker.replace("<", "\\<") + "</red>");
+                }
+            }
             return true;
         }
 
