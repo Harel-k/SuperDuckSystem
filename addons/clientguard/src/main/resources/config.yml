@@ -10,15 +10,25 @@ scan:
     skip: true
     fallback-prefixes: [".", "*"]
 
-# Auto-enforcement is intentionally OFF until the destructive wipe adapter is
-# fully completed and live-tested. Detection/manual scans are still active.
+# Auto-enforcement is intentionally OFF until ClientGuard has passed live testing.
+# Detection/manual scans still work while this is false.
 enforcement:
   enabled: false
 
   hacked-client:
     ban-command: "tempban {player} 14d Illegal client detected: {mods}"
     destructive-wipe:
+      # Both switches must be explicitly armed before a confirmed hacked client
+      # can be wiped/banned.
       enabled: false
+
+      # Keep this true on QDucks. ClientGuard refuses to start a destructive wipe
+      # unless at least one external wipe adapter command is configured.
+      # Put the real /home provider's delete-all-homes command here once verified.
+      require-external-commands: true
+      external-commands: []
+
+      reset-advancements: true
 
   freecam:
     disconnect-on-warning: true
@@ -26,7 +36,7 @@ enforcement:
     final-warning: "&4FINAL WARNING: &cFreecam is still installed. Remove it before reconnecting or you will receive a 3-day ban."
     ban-command: "tempban {player} 3d Freecam after two warnings"
 
-# HACK_CLIENT = confirmed detection is eligible for 14-day + wipe.
+# HACK_CLIENT = confirmed detection is eligible for 14-day + gameplay wipe.
 # FREECAM = warning -> final warning -> 3-day ban, never wipe.
 # ALERT_ONLY = staff alert only until QDucks explicitly defines a punishment.
 hacks:
