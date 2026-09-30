@@ -17,11 +17,24 @@ public final class DuckyPvpAdapter {
         Plugin ducky = plugin.getServer().getPluginManager().getPlugin("DuckyPVP");
         if (ducky == null || !ducky.isEnabled()) return true;
         try {
+            ducky.getClass().getMethod("exportPlayerBackup", UUID.class);
             ducky.getClass().getMethod("discardPlayerBackup", UUID.class);
             ducky.getClass().getMethod("hasPlayerBackup", UUID.class);
             return true;
         } catch (NoSuchMethodException exception) {
             return false;
+        }
+    }
+
+    public String exportBackup(UUID uuid) {
+        Plugin ducky = plugin.getServer().getPluginManager().getPlugin("DuckyPVP");
+        if (ducky == null || !ducky.isEnabled()) return "";
+        try {
+            Method export = ducky.getClass().getMethod("exportPlayerBackup", UUID.class);
+            Object value = export.invoke(ducky, uuid);
+            return value instanceof String text ? text : "";
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Could not export DuckyPVP backup for " + uuid, exception);
         }
     }
 
