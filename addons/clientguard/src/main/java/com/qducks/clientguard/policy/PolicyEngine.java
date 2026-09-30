@@ -10,12 +10,15 @@ import org.bukkit.entity.Player;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public final class PolicyEngine {
     private final SuperDuckClientGuard plugin;
     private final StrikeStore strikes;
     private final SanctionService sanctions;
+    private final Set<UUID> freecamHandledThisSession = ConcurrentHashMap.newKeySet();
 
     public PolicyEngine(SuperDuckClientGuard plugin, StrikeStore strikes, SanctionService sanctions) {
         this.plugin = plugin;
@@ -47,6 +50,12 @@ public final class PolicyEngine {
     }
 
     private void handleFreecam(Player player) {
+        if (!freecamHandledThisSession.add(player.getUniqueId())) {
+            alert("<yellow>Freecam remains detected for <white>" + player.getName()
+                    + "</white>, but this login has already received its Freecam action.</yellow>");
+            return;
+        }
+
         int strike = strikes.incrementFreecam(player.getUniqueId());
         alert("<yellow>Freecam confirmed:</yellow> <white>" + player.getName()
                 + "</white> <gray>(strike " + strike + ")</gray>");
@@ -68,6 +77,10 @@ public final class PolicyEngine {
                 "enforcement.freecam-tempban-command",
                 "tempban {player} 3d Freecam is not allowed on QDucks SMP");
         dispatch(command.replace("{player}", player.getName()));
+    }
+
+    public void onQuit(UUID uuid) {
+        freecamHandledThisSession.remove(uuid);
     }
 
     public int freecamStrikes(Player player) {
