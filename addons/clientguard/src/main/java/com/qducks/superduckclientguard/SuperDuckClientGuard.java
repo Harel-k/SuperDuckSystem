@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class SuperDuckClientGuard extends JavaPlugin {
     private SuperDuckSystem superDuckSystem;
     private StrikeStore strikeStore;
+    private WipeCoordinator wipeCoordinator;
     private EnforcementService enforcementService;
     private ClientScanService scanService;
 
@@ -24,7 +25,8 @@ public final class SuperDuckClientGuard extends JavaPlugin {
         this.superDuckSystem = sds;
 
         this.strikeStore = new StrikeStore(this);
-        this.enforcementService = new EnforcementService(this, strikeStore);
+        this.wipeCoordinator = new WipeCoordinator(this);
+        this.enforcementService = new EnforcementService(this, strikeStore, wipeCoordinator);
         this.scanService = new ClientScanService(this, enforcementService);
 
         ClientGuardListener listener = new ClientGuardListener(this, scanService);
