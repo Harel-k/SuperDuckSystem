@@ -6,7 +6,7 @@ description: Client integrity addon for SuperDuckSystem
 authors: [QDucks]
 website: https://qducks.com
 depend: [SuperDuckSystem]
-softdepend: [floodgate, Geyser-Spigot]
+softdepend: [floodgate, Geyser-Spigot, DuckyPVP]
 
 commands:
   clientguard:
