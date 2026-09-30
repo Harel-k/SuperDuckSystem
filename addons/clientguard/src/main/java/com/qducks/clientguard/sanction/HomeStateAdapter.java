@@ -92,21 +92,13 @@ public final class HomeStateAdapter {
     private boolean supportsEssentials(Plugin essentials) {
         try {
             Method getUser = essentials.getClass().getMethod("getUser", UUID.class);
-            Object probe = getUser.invoke(essentials, UUID.randomUUID());
-            if (probe == null) {
-                // Method existence is sufficient here; a random UUID is expected to be absent.
-                return true;
-            }
-            probe.getClass().getMethod("getHomes");
-            probe.getClass().getMethod("getHome", String.class);
-            probe.getClass().getMethod("delHome", String.class);
+            Class<?> userType = getUser.getReturnType();
+            userType.getMethod("getHomes");
+            userType.getMethod("getHome", String.class);
+            userType.getMethod("delHome", String.class);
             return true;
         } catch (NoSuchMethodException exception) {
             return false;
-        } catch (ReflectiveOperationException exception) {
-            // The API method exists; runtime lookup of a random user failing does
-            // not make the integration structurally unsupported.
-            return true;
         }
     }
 
