@@ -89,7 +89,15 @@ public final class SanctionService {
         alert("<gold>Preparing protected sanction snapshot for <yellow>" + player.getName()
                 + "</yellow> before any wipe.</gold>");
 
-        snapshots.create(player, detections).whenComplete((snapshot, snapshotError) ->
+        final String duckyBackup;
+        try {
+            duckyBackup = duckyPvp.exportBackup(uuid);
+        } catch (Throwable error) {
+            failBeforeWipe(player, "could not snapshot DuckyPVP state: " + rootMessage(error));
+            return;
+        }
+
+        snapshots.create(player, detections, duckyBackup).whenComplete((snapshot, snapshotError) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     if (snapshotError != null) {
                         failBeforeWipe(player, "snapshot failed: " + rootMessage(snapshotError));
