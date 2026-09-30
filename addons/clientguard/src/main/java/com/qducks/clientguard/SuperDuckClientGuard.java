@@ -48,7 +48,7 @@ public final class SuperDuckClientGuard extends JavaPlugin {
         this.scanner = new ClientScanner(this, policy);
 
         getServer().getPluginManager().registerEvents(new SignResponseListener(scanner), this);
-        getServer().getPluginManager().registerEvents(new JoinScanListener(this, scanner), this);
+        getServer().getPluginManager().registerEvents(new JoinScanListener(this, scanner, policy), this);
         getServer().getPluginManager().registerEvents(new SanctionLockListener(sanctionLock), this);
 
         PluginCommand command = getCommand("clientguard");
