@@ -201,7 +201,7 @@ final class ClientScanService {
         for (int index = 0; index < batch.size(); index++) {
             HackDefinition definition = batch.get(index);
             String response = index < lines.length ? lines[index].strip() : "";
-            ScanResult result = evaluate(definition, response, exploitPreventer);
+            ScanResult result = ResponseEvaluator.evaluate(definition, response, exploitPreventer);
             session.results().put(definition.id(), result);
             if (index > 0) log.append(", ");
             log.append(definition.id()).append('=').append(result);
@@ -231,36 +231,6 @@ final class ClientScanService {
             }
             openCurrentBatch(player, session);
         }, delay);
-    }
-
-    private ScanResult evaluate(HackDefinition hack, String response, boolean exploitPreventer) {
-        if (response.isEmpty()) return ScanResult.NOT_DETECTED;
-
-        String lowerKey = hack.lowerKey();
-        int keyLength = lowerKey.length();
-        if (response.length() == keyLength + 1
-                && response.regionMatches(true, 0, lowerKey, 0, keyLength)
-                && Character.isLetter(response.charAt(keyLength))) {
-            return ScanResult.NOT_DETECTED;
-        }
-
-        return switch (hack.mode()) {
-            case METEOR -> {
-                if (response.equalsIgnoreCase(hack.key())) yield ScanResult.DETECTED;
-                if (startsWithIgnoreCase(response, hack.lowerFallback())) yield ScanResult.NOT_DETECTED;
-                yield ScanResult.DETECTED;
-            }
-            case TRANSLATE -> {
-                if (startsWithIgnoreCase(response, hack.lowerFallback())) yield ScanResult.NOT_DETECTED;
-                if (response.equalsIgnoreCase(hack.key())) yield ScanResult.PROTECTED;
-                yield ScanResult.DETECTED;
-            }
-            case KEYBIND -> {
-                if (exploitPreventer && response.equalsIgnoreCase(hack.key())) yield ScanResult.PROTECTED;
-                if (response.equalsIgnoreCase(hack.key())) yield ScanResult.NOT_DETECTED;
-                yield ScanResult.DETECTED;
-            }
-        };
     }
 
     private void finish(UUID playerId) {
