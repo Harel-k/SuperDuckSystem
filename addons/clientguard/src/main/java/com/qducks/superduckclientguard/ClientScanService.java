@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,6 +35,7 @@ final class ClientScanService {
     private final SuperDuckClientGuard plugin;
     private final EnforcementService enforcement;
     private final Map<UUID, ScanSession> sessions = new ConcurrentHashMap<>();
+    private final Set<ProbeBlockKey> reservedProbeBlocks = ConcurrentHashMap.newKeySet();
     private volatile List<HackDefinition> definitions = List.of();
 
     ClientScanService(SuperDuckClientGuard plugin, EnforcementService enforcement) {
@@ -118,7 +120,7 @@ final class ClientScanService {
             return;
         }
 
-        Location signLocation = SignProbe.findAirBlock(player);
+        Location signLocation = SignProbe.findAirBlock(player, this::reserveProbeLocation);
         if (signLocation == null) {
             plugin.getLogger().warning("No safe temporary sign location found for " + player.getName());
             finish(player.getUniqueId());
@@ -140,6 +142,7 @@ final class ClientScanService {
             if (barrierPlaced && below.getType() == Material.BARRIER) {
                 below.setType(Material.AIR, false);
             }
+            releaseProbeLocation(signLocation);
             finish(player.getUniqueId());
             return;
         }
@@ -321,10 +324,29 @@ final class ClientScanService {
             }
         }
 
+        releaseProbeLocation(session.signLocation());
+
         session.signLocation(null);
         session.originalState(null);
         session.barrierLocation(null);
         session.barrierPlaced(false);
+    }
+
+    private synchronized boolean reserveProbeLocation(Location signLocation) {
+        ProbeBlockKey sign = ProbeBlockKey.of(signLocation);
+        ProbeBlockKey below = ProbeBlockKey.of(signLocation.clone().subtract(0, 1, 0));
+        if (reservedProbeBlocks.contains(sign) || reservedProbeBlocks.contains(below)) {
+            return false;
+        }
+        reservedProbeBlocks.add(sign);
+        reservedProbeBlocks.add(below);
+        return true;
+    }
+
+    private synchronized void releaseProbeLocation(Location signLocation) {
+        if (signLocation == null) return;
+        reservedProbeBlocks.remove(ProbeBlockKey.of(signLocation));
+        reservedProbeBlocks.remove(ProbeBlockKey.of(signLocation.clone().subtract(0, 1, 0)));
     }
 
     private Component componentFor(HackDefinition hack) {
@@ -365,5 +387,16 @@ final class ClientScanService {
         return definitions.stream().map(HackDefinition::displayName)
                 .reduce((left, right) -> left + ", " + right)
                 .orElse("none");
+    }
+
+    private record ProbeBlockKey(UUID worldId, int x, int y, int z) {
+        static ProbeBlockKey of(Location location) {
+            return new ProbeBlockKey(
+                    location.getWorld().getUID(),
+                    location.getBlockX(),
+                    location.getBlockY(),
+                    location.getBlockZ()
+            );
+        }
     }
 }
