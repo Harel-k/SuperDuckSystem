@@ -2,6 +2,7 @@ package com.qducks.clientguard.policy;
 
 import com.qducks.clientguard.SuperDuckClientGuard;
 import com.qducks.clientguard.detect.HackDefinition;
+import com.qducks.clientguard.sanction.SanctionService;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -14,10 +15,12 @@ import java.util.stream.Collectors;
 public final class PolicyEngine {
     private final SuperDuckClientGuard plugin;
     private final StrikeStore strikes;
+    private final SanctionService sanctions;
 
-    public PolicyEngine(SuperDuckClientGuard plugin, StrikeStore strikes) {
+    public PolicyEngine(SuperDuckClientGuard plugin, StrikeStore strikes, SanctionService sanctions) {
         this.plugin = plugin;
         this.strikes = strikes;
+        this.sanctions = sanctions;
     }
 
     public void handleConfirmed(Player player, List<HackDefinition> detected) {
@@ -29,16 +32,7 @@ public final class PolicyEngine {
 
         List<HackDefinition> hardHits = detected.stream().filter(h -> hard.contains(h.id())).toList();
         if (!hardHits.isEmpty()) {
-            String mods = hardHits.stream().map(HackDefinition::displayName).collect(Collectors.joining(", "));
-            alert("<red><bold>CONFIRMED CLIENT CHEAT</bold></red> <yellow>" + player.getName()
-                    + "</yellow> <gray>-></gray> <red>" + mods + "</red>");
-            plugin.getLogger().warning("Confirmed hard-client detection: " + player.getName() + " -> " + mods);
-
-            if (plugin.getConfig().getBoolean("enforcement.enabled", false)) {
-                // Intentionally fail safe until the wipe coordinator can snapshot and
-                // atomically wipe all QDucks-owned progress before the tempban.
-                alert("<gold>Hard-cheat enforcement is not armed yet; no ban/wipe was executed.</gold>");
-            }
+            sanctions.handleConfirmedHardCheat(player, hardHits);
             return;
         }
 
