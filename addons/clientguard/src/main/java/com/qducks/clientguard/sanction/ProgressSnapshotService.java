@@ -49,7 +49,9 @@ public final class ProgressSnapshotService {
         this.plugin = plugin;
     }
 
-    public CompletableFuture<File> create(Player player, List<HackDefinition> detections, String duckyPvpBackupYaml) {
+    public CompletableFuture<File> create(Player player, List<HackDefinition> detections,
+                                          String duckyPvpBackupYaml,
+                                          HomeStateAdapter.HomeSnapshot homesSnapshot) {
         if (!Bukkit.isPrimaryThread()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Snapshot capture must start on the Paper thread"));
         }
@@ -80,8 +82,15 @@ public final class ProgressSnapshotService {
         snapshot.set("minecraft.location.y", player.getY());
         snapshot.set("minecraft.location.z", player.getZ());
 
-        // Homes remain blocked until the actual homes-provider adapter exists.
-        snapshot.set("external.homes.captured", false);
+        boolean homesCaptured = homesSnapshot != null;
+        snapshot.set("external.homes.captured", homesCaptured);
+        if (homesCaptured) {
+            snapshot.set("external.homes.provider", homesSnapshot.provider());
+            snapshot.set("external.homes.count", homesSnapshot.homeNames().size());
+            if (!homesSnapshot.yaml().isBlank()) {
+                snapshot.set("external.homes.yaml", homesSnapshot.yaml());
+            }
+        }
 
         boolean duckyCaptured = duckyPvpBackupYaml != null;
         snapshot.set("external.duckypvp-backup.captured", duckyCaptured);
