@@ -1,0 +1,104 @@
+enabled: true
+
+scan:
+  on-join: true
+  join-delay-ticks: 100
+  timeout-ticks: 200
+  between-sign-ticks: 5
+  double-check: true
+  bedrock:
+    skip: true
+    fallback-prefixes: [".", "*"]
+
+# Auto-enforcement is intentionally OFF until the destructive wipe adapter is
+# fully completed and live-tested. Detection/manual scans are still active.
+enforcement:
+  enabled: false
+
+  hacked-client:
+    ban-command: "tempban {player} 14d Illegal client detected: {mods}"
+    destructive-wipe:
+      enabled: false
+
+  freecam:
+    disconnect-on-warning: true
+    first-warning: "&cFreecam is not allowed on QDucks SMP. Remove it before reconnecting."
+    final-warning: "&4FINAL WARNING: &cFreecam is still installed. Remove it before reconnecting or you will receive a 3-day ban."
+    ban-command: "tempban {player} 3d Freecam after two warnings"
+
+# HACK_CLIENT = confirmed detection is eligible for 14-day + wipe.
+# FREECAM = warning -> final warning -> 3-day ban, never wipe.
+# ALERT_ONLY = staff alert only until QDucks explicitly defines a punishment.
+hacks:
+  meteor-client:
+    display-name: "Meteor Client"
+    key: "key.meteor-client.open-gui"
+    mode: METEOR
+    policy: HACK_CLIENT
+  liquidbounce:
+    display-name: "LiquidBounce"
+    key: "liquidbounce.module.killaura.name"
+    mode: TRANSLATE
+    policy: HACK_CLIENT
+  wurst:
+    display-name: "Wurst Client"
+    key: "key.wurst.zoom"
+    mode: KEYBIND
+    policy: HACK_CLIENT
+  bleachhack:
+    display-name: "BleachHack"
+    key: "bleachhack.module.killaura"
+    mode: TRANSLATE
+    policy: HACK_CLIENT
+  aristois:
+    display-name: "Aristois"
+    key: "emc.module.killaura.name"
+    mode: TRANSLATE
+    policy: HACK_CLIENT
+  coffee:
+    display-name: "Coffee Client"
+    key: "coffee.module.killaura.name"
+    mode: TRANSLATE
+    policy: HACK_CLIENT
+
+  freecam:
+    display-name: "Freecam"
+    key: "key.freecam.toggle"
+    mode: KEYBIND
+    policy: FREECAM
+
+  xray-fabric:
+    display-name: "XRay (Fabric)"
+    key: "xray.config.toggle"
+    mode: KEYBIND
+    policy: ALERT_ONLY
+  chestesp:
+    display-name: "ChestESP"
+    key: "key.chestesp.toggle"
+    mode: KEYBIND
+    policy: ALERT_ONLY
+  killaura-fabric:
+    display-name: "KillAura (Fabric)"
+    key: "key.killaura"
+    mode: KEYBIND
+    policy: ALERT_ONLY
+  world-downloader:
+    display-name: "World Downloader"
+    key: "key.wdl.startStop"
+    mode: TRANSLATE
+    policy: ALERT_ONLY
+  seedcrackerx:
+    display-name: "SeedCrackerX"
+    key: "cracker.already"
+    mode: TRANSLATE
+    policy: ALERT_ONLY
+  litematica:
+    display-name: "Litematica"
+    key: "litematica.hotkey.name.openmainmenuscreen"
+    mode: TRANSLATE
+    policy: ALERT_ONLY
+  xaeros-minimap:
+    display-name: "Xaero's Minimap"
+    key: "gui.xaero_minimap"
+    mode: TRANSLATE
+    policy: ALERT_ONLY
