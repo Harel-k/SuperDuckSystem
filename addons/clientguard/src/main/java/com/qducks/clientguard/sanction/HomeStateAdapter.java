@@ -162,7 +162,10 @@ public final class HomeStateAdapter {
         try {
             Class<?> apiType = Class.forName("net.william278.huskhomes.api.HuskHomesAPI");
             apiType.getMethod("getInstance");
-            apiType.getMethod("adaptUser", Player.class);
+            Method adaptUser = apiType.getMethod("adaptUser", Player.class);
+            Class<?> userType = adaptUser.getReturnType();
+            findCompatible(apiType, "getUserHomes", userType);
+            findCompatible(apiType, "deleteHome", userType, String.class);
             return true;
         } catch (ReflectiveOperationException | LinkageError exception) {
             return false;
