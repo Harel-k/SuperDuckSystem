@@ -90,22 +90,29 @@ public final class SanctionService {
                 + "</yellow> before any wipe.</gold>");
 
         final String duckyBackup;
-        final HomeStateAdapter.HomeSnapshot homeSnapshot;
         try {
             duckyBackup = duckyPvp.exportBackup(uuid);
-            homeSnapshot = homes.capture(player);
         } catch (Throwable error) {
-            failBeforeWipe(player, "could not snapshot external state: " + rootMessage(error));
+            failBeforeWipe(player, "could not snapshot DuckyPVP state: " + rootMessage(error));
             return;
         }
 
-        snapshots.create(player, detections, duckyBackup, homeSnapshot).whenComplete((snapshot, snapshotError) ->
+        homes.capture(player).whenComplete((homeSnapshot, homeError) ->
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (snapshotError != null) {
-                        failBeforeWipe(player, "snapshot failed: " + rootMessage(snapshotError));
+                    if (homeError != null) {
+                        failBeforeWipe(player, "could not snapshot homes: " + rootMessage(homeError));
                         return;
                     }
-                    continueAfterSnapshot(player, detections, snapshot, homeSnapshot);
+                    snapshots.create(player, detections, duckyBackup, homeSnapshot)
+                            .whenComplete((snapshot, snapshotError) ->
+                                    Bukkit.getScheduler().runTask(plugin, () -> {
+                                        if (snapshotError != null) {
+                                            failBeforeWipe(player, "snapshot failed: " + rootMessage(snapshotError));
+                                            return;
+                                        }
+                                        continueAfterSnapshot(player, detections, snapshot, homeSnapshot);
+                                    })
+                            );
                 })
         );
     }
@@ -124,8 +131,27 @@ public final class SanctionService {
             return;
         }
 
-        if (!homes.wipe(player, homeSnapshot)) {
-            failAfterSnapshot(player, snapshot, "homes could not be fully wiped; no SDS wipe was attempted");
+        homes.wipe(player, homeSnapshot).whenComplete((homesWiped, homesError) ->
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (homesError != null) {
+                        failAfterSnapshot(player, snapshot,
+                                "homes wipe failed; no SDS wipe was attempted: " + rootMessage(homesError));
+                        return;
+                    }
+                    if (!Boolean.TRUE.equals(homesWiped)) {
+                        failAfterSnapshot(player, snapshot,
+                                "homes could not be fully verified as deleted; no SDS wipe was attempted");
+                        return;
+                    }
+                    continueAfterExternalWipe(player, detections, snapshot);
+                })
+        );
+    }
+
+    private void continueAfterExternalWipe(Player player, List<HackDefinition> detections, File snapshot) {
+        UUID uuid = player.getUniqueId();
+        if (!player.isOnline()) {
+            failAfterSnapshot(player, snapshot, "player disconnected before SDS wipe");
             return;
         }
 
