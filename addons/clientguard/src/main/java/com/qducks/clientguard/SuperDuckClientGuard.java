@@ -3,9 +3,16 @@ package com.qducks.clientguard;
 import com.qducks.clientguard.command.ClientGuardCommand;
 import com.qducks.clientguard.detect.ClientScanner;
 import com.qducks.clientguard.listener.JoinScanListener;
+import com.qducks.clientguard.listener.SanctionLockListener;
 import com.qducks.clientguard.listener.SignResponseListener;
 import com.qducks.clientguard.policy.PolicyEngine;
 import com.qducks.clientguard.policy.StrikeStore;
+import com.qducks.clientguard.sanction.DuckyPvpAdapter;
+import com.qducks.clientguard.sanction.HomeStateAdapter;
+import com.qducks.clientguard.sanction.ProgressSnapshotService;
+import com.qducks.clientguard.sanction.ProgressWipeService;
+import com.qducks.clientguard.sanction.SanctionLock;
+import com.qducks.clientguard.sanction.SanctionService;
 import com.qducks.superducksystem.SuperDuckSystem;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.Plugin;
@@ -15,6 +22,7 @@ public final class SuperDuckClientGuard extends JavaPlugin {
     private SuperDuckSystem superDuckSystem;
     private ClientScanner scanner;
     private PolicyEngine policy;
+    private SanctionService sanctions;
 
     @Override
     public void onEnable() {
@@ -29,17 +37,25 @@ public final class SuperDuckClientGuard extends JavaPlugin {
         this.superDuckSystem = sds;
 
         StrikeStore strikeStore = new StrikeStore(this);
-        this.policy = new PolicyEngine(this, strikeStore);
+        SanctionLock sanctionLock = new SanctionLock();
+        ProgressSnapshotService snapshotService = new ProgressSnapshotService(this);
+        ProgressWipeService wipeService = new ProgressWipeService(this);
+        DuckyPvpAdapter duckyPvpAdapter = new DuckyPvpAdapter(this);
+        HomeStateAdapter homeStateAdapter = new HomeStateAdapter(this);
+        this.sanctions = new SanctionService(
+                this, snapshotService, wipeService, duckyPvpAdapter, homeStateAdapter, sanctionLock);
+        this.policy = new PolicyEngine(this, strikeStore, sanctions);
         this.scanner = new ClientScanner(this, policy);
 
         getServer().getPluginManager().registerEvents(new SignResponseListener(scanner), this);
         getServer().getPluginManager().registerEvents(new JoinScanListener(this, scanner), this);
+        getServer().getPluginManager().registerEvents(new SanctionLockListener(sanctionLock), this);
 
         PluginCommand command = getCommand("clientguard");
         if (command == null) {
             throw new IllegalStateException("/clientguard is missing from plugin.yml");
         }
-        ClientGuardCommand handler = new ClientGuardCommand(this, scanner, policy);
+        ClientGuardCommand handler = new ClientGuardCommand(this, scanner, policy, sanctions);
         command.setExecutor(handler);
         command.setTabCompleter(handler);
 
@@ -63,5 +79,9 @@ public final class SuperDuckClientGuard extends JavaPlugin {
 
     public PolicyEngine policy() {
         return policy;
+    }
+
+    public SanctionService sanctions() {
+        return sanctions;
     }
 }
