@@ -6,6 +6,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 final class EnforcementService {
@@ -14,6 +17,7 @@ final class EnforcementService {
     private final SuperDuckClientGuard plugin;
     private final StrikeStore strikes;
     private final WipeCoordinator wipeCoordinator;
+    private final Set<UUID> sanctioning = ConcurrentHashMap.newKeySet();
 
     EnforcementService(SuperDuckClientGuard plugin, StrikeStore strikes, WipeCoordinator wipeCoordinator) {
         this.plugin = plugin;
@@ -66,6 +70,17 @@ final class EnforcementService {
             return;
         }
 
+        UUID playerId = player.getUniqueId();
+        if (!sanctioning.add(playerId)) {
+            plugin.getLogger().warning("A ClientGuard sanction is already running for " + player.getName());
+            return;
+        }
+
+        player.closeInventory();
+        player.sendMessage(LEGACY.deserialize(
+                "&cClientGuard confirmed a prohibited hacked client. Your sanction is being applied."
+        ));
+
         String playerName = player.getName();
         String banCommand = plugin.getConfig().getString(
                 "enforcement.hacked-client.ban-command",
@@ -80,6 +95,7 @@ final class EnforcementService {
                                 + "; 14-day ban was NOT applied: " + message);
                         alertStaff("&4[ClientGuard] &cWipe failed for " + playerName
                                 + "; 14-day ban was NOT applied. Check console.");
+                        sanctioning.remove(playerId);
                         return;
                     }
 
@@ -92,7 +108,20 @@ final class EnforcementService {
                                 + "Check homes/external data manually.");
                     }
 
-                    dispatch(banCommand, player, detected);
+                    boolean banAccepted = dispatch(banCommand, player, detected);
+                    if (!banAccepted) {
+                        alertStaff("&4[ClientGuard] The wipe completed, but the configured 14-day ban command failed. "
+                                + "The player will be kicked and kept locked for this session.");
+                    }
+
+                    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                        if (player.isOnline()) {
+                            player.kick(LEGACY.deserialize(
+                                    "&cYour QDucks SMP account received a ClientGuard sanction. Contact staff if you believe this is incorrect."
+                            ));
+                        }
+                    }, 10L);
+
                     alertStaff("&c[ClientGuard] " + playerName
                             + " received the confirmed hacked-client 14-day sanction. "
                             + "Recovery snapshot=" + outcome.playerSnapshot().getName()
@@ -137,12 +166,25 @@ final class EnforcementService {
                 "enforcement.freecam.ban-command",
                 "tempban {player} 3d Freecam after two warnings"
         );
-        dispatch(command, player, List.of());
+        boolean accepted = dispatch(command, player, List.of());
+        if (!accepted && player.isOnline()) {
+            player.kick(LEGACY.deserialize(
+                    "&cFreecam remained installed after both warnings. Contact staff if you believe this is incorrect."
+            ));
+        }
         alertStaff("&c[ClientGuard] " + player.getName()
                 + " reached Freecam strike " + strike + "; 3-day ban command dispatched.");
     }
 
-    private void dispatch(String template, Player player, List<HackDefinition> detected) {
+    boolean isSanctioning(UUID playerId) {
+        return sanctioning.contains(playerId);
+    }
+
+    void releaseSanction(UUID playerId) {
+        sanctioning.remove(playerId);
+    }
+
+    private boolean dispatch(String template, Player player, List<HackDefinition> detected) {
         String command = template
                 .replace("{player}", player.getName())
                 .replace("{uuid}", player.getUniqueId().toString())
@@ -154,6 +196,7 @@ final class EnforcementService {
             plugin.getLogger().severe("Configured punishment command was not accepted: " + command);
             alertStaff("&4[ClientGuard] Punishment command failed. Check console.");
         }
+        return accepted;
     }
 
     private String names(List<HackDefinition> definitions) {
