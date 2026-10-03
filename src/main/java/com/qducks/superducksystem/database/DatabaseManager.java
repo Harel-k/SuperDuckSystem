@@ -21,11 +21,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public final class DatabaseManager {
+    private static final long BACKUP_FIRST_CHECK_TICKS = 5L * 60L * 20L;
+    private static final long BACKUP_CHECK_PERIOD_TICKS = 10L * 60L * 20L;
+
     private final SuperDuckSystem plugin;
     private final ExecutorService executor;
     private File databaseFile;
     private volatile boolean ready;
     private BukkitTask automaticBackupTask;
+    private volatile boolean backupInProgress;
 
     public DatabaseManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -104,16 +108,30 @@ public final class DatabaseManager {
             return;
         }
         long hours = Math.max(1L, Math.min(168L, plugin.getConfig().getLong("database.backups.interval-hours", 6L)));
-        long periodTicks = hours * 60L * 60L * 20L;
-        automaticBackupTask = Bukkit.getScheduler().runTaskTimer(plugin, () ->
-                backup().whenComplete((file, error) -> {
-                    if (error != null) {
-                        plugin.getLogger().severe("Automatic SuperDuck backup failed: " + rootMessage(error));
-                    } else {
-                        plugin.getLogger().info("Automatic SuperDuck backup created: " + file.getName());
-                    }
-                }), periodTicks, periodTicks);
+        long intervalMillis = TimeUnit.HOURS.toMillis(hours);
+        // The server restarts more often than the backup interval, so a fixed timer that
+        // starts counting at boot would never fire. Instead, check periodically whether the
+        // newest backup on disk is older than the interval.
+        automaticBackupTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (backupInProgress || newestBackupAgeMillis() < intervalMillis) return;
+            backupInProgress = true;
+            backup().whenComplete((file, error) -> {
+                backupInProgress = false;
+                if (error != null) {
+                    plugin.getLogger().severe("Automatic SuperDuck backup failed: " + rootMessage(error));
+                } else {
+                    plugin.getLogger().info("Automatic SuperDuck backup created: " + file.getName());
+                }
+            });
+        }, BACKUP_FIRST_CHECK_TICKS, BACKUP_CHECK_PERIOD_TICKS);
         plugin.getLogger().info("Automatic database backups enabled every " + hours + " hour(s).");
+    }
+
+    private long newestBackupAgeMillis() {
+        File[] files = backupDirectory().listFiles((directory, name) -> name.startsWith("SuperDuckSystem-") && name.endsWith(".db"));
+        if (files == null || files.length == 0) return Long.MAX_VALUE;
+        long newest = Arrays.stream(files).mapToLong(File::lastModified).max().orElse(0L);
+        return System.currentTimeMillis() - newest;
     }
 
     public void upsertPlayer(UUID uuid, String username, long now) {
