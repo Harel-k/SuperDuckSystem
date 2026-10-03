@@ -4,8 +4,10 @@ import com.qducks.superducksystem.SuperDuckSystem;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ public final class CombatService {
     private String blockedTeleportMessage;
     private String releasedMessage;
     private boolean killOnLogout;
+    private Method arenaLockMethod;
 
     public CombatService(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -157,8 +160,26 @@ public final class CombatService {
     }
 
     private void show(Player player) {
-        if (actionbar != null && !actionbar.isBlank()) {
-            player.sendActionBar(LEGACY.deserialize(replace(actionbar, player)));
+        if (actionbar == null || actionbar.isBlank() || duckyPvpShowsCombatBar(player)) {
+            return;
+        }
+        player.sendActionBar(LEGACY.deserialize(replace(actionbar, player)));
+    }
+
+    /**
+     * Inside the DuckyPVP arena both plugins tag players and would overwrite each other's action bar
+     * every tick. While DuckyPVP's arena lock is active its bar is the relevant one, so skip ours.
+     */
+    private boolean duckyPvpShowsCombatBar(Player player) {
+        Plugin duckyPvp = Bukkit.getPluginManager().getPlugin("DuckyPVP");
+        if (duckyPvp == null || !duckyPvp.isEnabled()) return false;
+        try {
+            if (arenaLockMethod == null || arenaLockMethod.getDeclaringClass() != duckyPvp.getClass()) {
+                arenaLockMethod = duckyPvp.getClass().getMethod("isArenaCombatLocked", Player.class);
+            }
+            return Boolean.TRUE.equals(arenaLockMethod.invoke(duckyPvp, player));
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            return false;
         }
     }
 
