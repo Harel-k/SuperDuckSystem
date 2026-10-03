@@ -103,6 +103,59 @@ public final class EconomyService {
         });
     }
 
+    /**
+     * Reads both balances straight from the database. Because the database runs one operation at a
+     * time in submission order, this also waits for any writes queued before it, unlike the cache.
+     */
+    public CompletableFuture<Balances> freshBalances(UUID uuid) {
+        return plugin.database().submit(connection -> {
+            BigDecimal money = readOrCreate(connection, uuid, CurrencyType.MONEY);
+            BigDecimal ducks = readOrCreate(connection, uuid, CurrencyType.DUCKS);
+            cache.put(new AccountKey(uuid, CurrencyType.MONEY), money);
+            cache.put(new AccountKey(uuid, CurrencyType.DUCKS), ducks);
+            return new Balances(money, ducks);
+        });
+    }
+
+    /**
+     * Sets MONEY and DUCKS together in one transaction. When {@code expected} is given, the write only
+     * happens if both balances still equal it; otherwise {@link BalanceChangedException} is thrown and
+     * nothing changes.
+     */
+    public CompletableFuture<Void> setBalances(UUID uuid, Balances expected, Balances target, TransactionType type, UUID actor) {
+        try { ensureMutationAllowed(type); }
+        catch (ReadOnlyException exception) { return CompletableFuture.failedFuture(exception); }
+        BigDecimal money = formatter.normalize(CurrencyType.MONEY, target.money());
+        BigDecimal ducks = formatter.normalize(CurrencyType.DUCKS, target.ducks());
+        if (money.signum() < 0 || ducks.signum() < 0) {
+            return CompletableFuture.failedFuture(new IllegalArgumentException("Balance cannot be negative"));
+        }
+        return plugin.database().submit(connection -> {
+            boolean oldAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                BigDecimal moneyBefore = readOrCreate(connection, uuid, CurrencyType.MONEY);
+                BigDecimal ducksBefore = readOrCreate(connection, uuid, CurrencyType.DUCKS);
+                if (expected != null && (moneyBefore.compareTo(expected.money()) != 0 || ducksBefore.compareTo(expected.ducks()) != 0)) {
+                    throw new BalanceChangedException();
+                }
+                writeBalance(connection, uuid, CurrencyType.MONEY, money);
+                writeBalance(connection, uuid, CurrencyType.DUCKS, ducks);
+                record(connection, type, CurrencyType.MONEY, actor, uuid, money.subtract(moneyBefore));
+                record(connection, type, CurrencyType.DUCKS, actor, uuid, ducks.subtract(ducksBefore));
+                connection.commit();
+                cache.put(new AccountKey(uuid, CurrencyType.MONEY), money);
+                cache.put(new AccountKey(uuid, CurrencyType.DUCKS), ducks);
+                return null;
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(oldAutoCommit);
+            }
+        });
+    }
+
     public TransferResult transferWithinTransaction(Connection connection, UUID from, UUID to, CurrencyType currency,
                                                     BigDecimal requested, TransactionType type) throws SQLException {
         ensureMutationAllowed(type);
@@ -238,6 +291,11 @@ public final class EconomyService {
     private record AccountKey(UUID uuid, CurrencyType currency) {}
     public record TransferResult(BigDecimal senderBalance, BigDecimal receiverBalance, BigDecimal amount) {}
     public record LeaderboardEntry(UUID uuid, String username, BigDecimal amount) {}
+    public record Balances(BigDecimal money, BigDecimal ducks) {}
+
+    public static final class BalanceChangedException extends RuntimeException {
+        public BalanceChangedException() { super("Balance changed during the operation"); }
+    }
 
     public static final class InsufficientFundsException extends RuntimeException {
         private final BigDecimal balance;

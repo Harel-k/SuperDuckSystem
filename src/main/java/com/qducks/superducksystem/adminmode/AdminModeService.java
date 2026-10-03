@@ -2,6 +2,8 @@ package com.qducks.superducksystem.adminmode;
 
 import com.qducks.superducksystem.SuperDuckSystem;
 import com.qducks.superducksystem.economy.CurrencyType;
+import com.qducks.superducksystem.economy.EconomyService;
+import com.qducks.superducksystem.economy.EconomyService.Balances;
 import com.qducks.superducksystem.economy.TransactionType;
 import com.sk89q.worldguard.LocalPlayer;
 import com.sk89q.worldguard.WorldGuard;
@@ -14,10 +16,15 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachment;
+import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -137,53 +144,91 @@ public final class AdminModeService {
                 return;
             }
 
+            UUID uuid = target.getUniqueId();
+            ConfigurationSection legit;
+            ConfigurationSection admin;
             try {
-                YamlConfiguration data = loadData(target.getUniqueId());
-                ConfigurationSection legit = resetSection(data, "profiles.legit");
-                PlayerStateCodec.capture(target, legit, balances.money, balances.ducks);
+                if (!releaseArenaKit(target)) {
+                    switching.remove(uuid);
+                    actor.sendMessage("§cLeave the DuckyPVP arena before switching profiles.");
+                    return;
+                }
+                YamlConfiguration data = loadData(uuid);
+                legit = resetSection(data, "profiles.legit");
+                PlayerStateCodec.capture(target, legit, balances.money(), balances.ducks());
                 // Legit Mode is always survival, even if the owner happened to be creative
                 // before switching profiles for the first time.
                 legit.set("gamemode", GameMode.SURVIVAL.name());
 
-                ConfigurationSection admin = data.getConfigurationSection("profiles.admin");
-                if (admin == null) {
-                    admin = resetSection(data, "profiles.admin");
-                    PlayerStateCodec.createFreshAdmin(target, admin, balances.money, balances.ducks, defaultAdminGameMode());
+                ConfigurationSection storedAdmin = data.getConfigurationSection("profiles.admin");
+                if (storedAdmin == null) {
+                    storedAdmin = resetSection(data, "profiles.admin");
+                    PlayerStateCodec.createFreshAdmin(target, storedAdmin, balances.money(), balances.ducks(), defaultAdminGameMode());
                 }
+                admin = storedAdmin;
 
                 data.set("last-name", target.getName());
                 data.set("transition", "enabling");
-                saveData(target.getUniqueId(), data);
-
-                active.add(target.getUniqueId());
-                installBypasses(target);
-                boolean teleported = PlayerStateCodec.apply(target, admin);
-                target.addScoreboardTag(TAG);
-                restoreBalances(target, admin).whenComplete((ignored, restoreError) -> Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (restoreError != null) {
-                        plugin.getLogger().severe("Failed to restore admin economy profile for " + target.getName() + ": " + restoreError.getMessage());
-                        actor.sendMessage("§cAbuse Mode switched player state, but economy restore failed. Check console before continuing.");
-                        switching.remove(target.getUniqueId());
-                        return;
-                    }
-                    YamlConfiguration finished = loadData(target.getUniqueId());
-                    finished.set("active", true);
-                    finished.set("transition", "none");
-                    saveData(target.getUniqueId(), finished);
-                    switching.remove(target.getUniqueId());
-                    target.sendTitle("§c§lABUSE MODE", "§7Admin profile loaded", 10, 50, 10);
-                    target.sendMessage("§c§lABUSE MODE §8» §fON §7— admin inventory, ender chest, location and economy loaded.");
-                    if (!teleported) target.sendMessage("§eYour admin profile world could not be restored, so your current location was kept.");
-                    if (!actor.equals(target)) actor.sendMessage("§aEnabled Abuse Mode for §f" + target.getName() + "§a.");
-                }));
+                saveData(uuid, data);
             } catch (Exception exception) {
-                switching.remove(target.getUniqueId());
-                active.remove(target.getUniqueId());
-                removeBypasses(target);
+                // Nothing has been applied to the player yet (apart from an arena kit being released).
+                switching.remove(uuid);
+                syncArenaKit(target);
                 plugin.getLogger().severe("Failed to enable Abuse Mode for " + target.getName() + ": " + exception.getMessage());
                 actor.sendMessage("§cFailed to enable Abuse Mode. Check console.");
+                return;
             }
+
+            active.add(uuid);
+            installBypasses(target);
+            boolean teleported = PlayerStateCodec.apply(target, admin);
+            target.addScoreboardTag(TAG);
+            Balances adminBalances = new Balances(PlayerStateCodec.money(admin), PlayerStateCodec.ducks(admin));
+            plugin.economy().setBalances(uuid, balances, adminBalances, TransactionType.ADMIN_SET, uuid)
+                    .whenComplete((ignored, restoreError) -> Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (restoreError != null) {
+                            plugin.getLogger().warning("Abuse Mode economy swap failed for " + target.getName() + ": " + rootMessage(restoreError));
+                            rollbackEnable(target, legit);
+                            actor.sendMessage(balanceChanged(restoreError)
+                                    ? "§c" + target.getName() + "'s balance changed during the switch. Nothing was changed; try again."
+                                    : "§cCould not switch the economy profile. Nothing was changed; check console.");
+                            return;
+                        }
+                        YamlConfiguration finished = loadData(uuid);
+                        finished.set("active", true);
+                        finished.set("transition", "none");
+                        saveData(uuid, finished);
+                        switching.remove(uuid);
+                        target.sendTitle("§c§lABUSE MODE", "§7Admin profile loaded", 10, 50, 10);
+                        target.sendMessage("§c§lABUSE MODE §8» §fON §7— admin inventory, ender chest, location and economy loaded.");
+                        if (!teleported) target.sendMessage("§eYour admin profile world could not be restored, so your current location was kept.");
+                        if (!actor.equals(target)) actor.sendMessage("§aEnabled Abuse Mode for §f" + target.getName() + "§a.");
+                    }));
         }));
+    }
+
+    /** Undo an /abuse on whose economy swap failed. The database was not changed, so only player state is reverted. */
+    private void rollbackEnable(Player target, ConfigurationSection legit) {
+        UUID uuid = target.getUniqueId();
+        if (!target.isOnline()) {
+            // The "enabling" marker stays on disk; handleJoin rolls back to legit on next join.
+            switching.remove(uuid);
+            return;
+        }
+        active.remove(uuid);
+        removeBypasses(target);
+        target.removeScoreboardTag(TAG);
+        try {
+            PlayerStateCodec.apply(target, legit);
+            enforceLegitSafety(target);
+            YamlConfiguration data = loadData(uuid);
+            data.set("active", false);
+            data.set("transition", "none");
+            saveData(uuid, data);
+        } finally {
+            switching.remove(uuid);
+        }
+        syncArenaKit(target);
     }
 
     public void disable(Player target, CommandSender actor) {
@@ -205,52 +250,87 @@ public final class AdminModeService {
                 return;
             }
 
+            UUID uuid = target.getUniqueId();
+            ConfigurationSection legit;
+            ConfigurationSection admin;
             try {
-                YamlConfiguration data = loadData(target.getUniqueId());
-                ConfigurationSection legit = data.getConfigurationSection("profiles.legit");
+                if (!releaseArenaKit(target)) {
+                    switching.remove(uuid);
+                    actor.sendMessage("§cLeave the DuckyPVP arena before switching profiles.");
+                    return;
+                }
+                YamlConfiguration data = loadData(uuid);
+                legit = data.getConfigurationSection("profiles.legit");
                 if (legit == null) {
-                    switching.remove(target.getUniqueId());
+                    switching.remove(uuid);
                     actor.sendMessage("§cThe legit profile is missing. Refusing to disable Abuse Mode so admin items cannot leak.");
                     return;
                 }
 
-                ConfigurationSection admin = resetSection(data, "profiles.admin");
-                PlayerStateCodec.capture(target, admin, balances.money, balances.ducks);
+                admin = resetSection(data, "profiles.admin");
+                PlayerStateCodec.capture(target, admin, balances.money(), balances.ducks());
                 legit.set("gamemode", GameMode.SURVIVAL.name());
                 data.set("last-name", target.getName());
                 data.set("active", true);
                 data.set("transition", "disabling");
-                saveData(target.getUniqueId(), data);
-
-                boolean teleported = PlayerStateCodec.apply(target, legit);
-                enforceLegitSafety(target);
-                restoreBalances(target, legit).whenComplete((ignored, restoreError) -> Bukkit.getScheduler().runTask(plugin, () -> {
-                    if (restoreError != null) {
-                        plugin.getLogger().severe("Failed to restore legit economy profile for " + target.getName() + ": " + restoreError.getMessage());
-                        actor.sendMessage("§cLegit player state restored, but economy restore failed. Check console before continuing.");
-                        switching.remove(target.getUniqueId());
-                        return;
-                    }
-
-                    YamlConfiguration finished = loadData(target.getUniqueId());
-                    finished.set("active", false);
-                    finished.set("transition", "none");
-                    saveData(target.getUniqueId(), finished);
-                    active.remove(target.getUniqueId());
-                    target.removeScoreboardTag(TAG);
-                    removeBypasses(target);
-                    switching.remove(target.getUniqueId());
-                    target.sendTitle("§a§lLEGIT MODE", "§7Survival profile restored", 10, 50, 10);
-                    target.sendMessage("§a§lLEGIT MODE §8» §fON §7— survival, WorldGuard protection, legit inventory, ender chest, location and economy restored.");
-                    if (!teleported) target.sendMessage("§eYour legit profile world could not be restored, so your current location was kept.");
-                    if (!actor.equals(target)) actor.sendMessage("§aDisabled Abuse Mode for §f" + target.getName() + "§a.");
-                }));
+                saveData(uuid, data);
             } catch (Exception exception) {
-                switching.remove(target.getUniqueId());
+                // Nothing has been applied to the player yet.
+                switching.remove(uuid);
                 plugin.getLogger().severe("Failed to disable Abuse Mode for " + target.getName() + ": " + exception.getMessage());
                 actor.sendMessage("§cFailed to disable Abuse Mode. Check console.");
+                return;
             }
+
+            boolean teleported = PlayerStateCodec.apply(target, legit);
+            enforceLegitSafety(target);
+            Balances legitBalances = new Balances(PlayerStateCodec.money(legit), PlayerStateCodec.ducks(legit));
+            plugin.economy().setBalances(uuid, balances, legitBalances, TransactionType.ADMIN_SET, uuid)
+                    .whenComplete((ignored, restoreError) -> Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (restoreError != null) {
+                            plugin.getLogger().warning("Abuse Mode economy swap failed for " + target.getName() + ": " + rootMessage(restoreError));
+                            rollbackDisable(target, admin);
+                            actor.sendMessage(balanceChanged(restoreError)
+                                    ? "§c" + target.getName() + "'s balance changed during the switch. Nothing was changed; try again."
+                                    : "§cCould not switch the economy profile. Nothing was changed; check console.");
+                            return;
+                        }
+
+                        YamlConfiguration finished = loadData(uuid);
+                        finished.set("active", false);
+                        finished.set("transition", "none");
+                        saveData(uuid, finished);
+                        active.remove(uuid);
+                        target.removeScoreboardTag(TAG);
+                        removeBypasses(target);
+                        switching.remove(uuid);
+                        syncArenaKit(target);
+                        target.sendTitle("§a§lLEGIT MODE", "§7Survival profile restored", 10, 50, 10);
+                        target.sendMessage("§a§lLEGIT MODE §8» §fON §7— survival, WorldGuard protection, legit inventory, ender chest, location and economy restored.");
+                        if (!teleported) target.sendMessage("§eYour legit profile world could not be restored, so your current location was kept.");
+                        if (!actor.equals(target)) actor.sendMessage("§aDisabled Abuse Mode for §f" + target.getName() + "§a.");
+                    }));
         }));
+    }
+
+    /** Undo an /abuse off whose economy swap failed. The database was not changed, so only player state is reverted. */
+    private void rollbackDisable(Player target, ConfigurationSection admin) {
+        UUID uuid = target.getUniqueId();
+        if (!target.isOnline()) {
+            // The "disabling" marker stays on disk; handleJoin rolls back to admin on next join.
+            switching.remove(uuid);
+            return;
+        }
+        try {
+            PlayerStateCodec.apply(target, admin);
+            YamlConfiguration data = loadData(uuid);
+            data.set("active", true);
+            data.set("transition", "none");
+            saveData(uuid, data);
+        } finally {
+            switching.remove(uuid);
+        }
+        AdminModeWorldGuardState.restoreWhenAdminReady(plugin, this, target);
     }
 
     public String modeName(Player player) {
@@ -356,18 +436,70 @@ public final class AdminModeService {
     }
 
     private CompletableFuture<Balances> fetchBalances(Player player) {
-        CompletableFuture<BigDecimal> money = plugin.economy().balance(player.getUniqueId(), CurrencyType.MONEY);
-        CompletableFuture<BigDecimal> ducks = plugin.economy().balance(player.getUniqueId(), CurrencyType.DUCKS);
-        return money.thenCombine(ducks, Balances::new);
+        // Read from the database (not the cache) so payments still queued are included.
+        return plugin.economy().freshBalances(player.getUniqueId());
     }
 
     private CompletableFuture<Void> restoreBalances(Player player, ConfigurationSection section) {
         UUID uuid = player.getUniqueId();
-        CompletableFuture<?> money = plugin.economy().set(uuid, CurrencyType.MONEY,
-                PlayerStateCodec.money(section), TransactionType.ADMIN_SET, uuid);
-        CompletableFuture<?> ducks = plugin.economy().set(uuid, CurrencyType.DUCKS,
-                PlayerStateCodec.ducks(section), TransactionType.ADMIN_SET, uuid);
-        return CompletableFuture.allOf(money, ducks);
+        Balances target = new Balances(PlayerStateCodec.money(section), PlayerStateCodec.ducks(section));
+        return plugin.economy().setBalances(uuid, null, target, TransactionType.ADMIN_SET, uuid);
+    }
+
+    /**
+     * Gives back the inventory DuckyPVP saved when the player entered the arena, so profile switches
+     * capture the player's real items instead of the arena kit. Returns false if the player still
+     * holds a kit that could not be released.
+     */
+    private boolean releaseArenaKit(Player player) {
+        Plugin duckyPvp = Bukkit.getPluginManager().getPlugin("DuckyPVP");
+        if (duckyPvp == null || !duckyPvp.isEnabled()) return true;
+        try {
+            Object result = duckyPvp.getClass().getMethod("releaseArenaKit", Player.class).invoke(duckyPvp, player);
+            return !(result instanceof Boolean released) || released;
+        } catch (NoSuchMethodException exception) {
+            // Older DuckyPVP: refuse only if it is holding a backup we cannot release.
+            try {
+                Object has = duckyPvp.getClass().getMethod("hasPlayerBackup", UUID.class).invoke(duckyPvp, player.getUniqueId());
+                return !(has instanceof Boolean held) || !held;
+            } catch (ReflectiveOperationException ignored) {
+                return true;
+            }
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            plugin.getLogger().warning("Could not release DuckyPVP kit for " + player.getName() + ": " + exception.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Lets DuckyPVP hand out the arena kit again if the player ended up inside the arena in Legit Mode.
+     * Not used for Abuse Mode, so an admin in the arena keeps the admin inventory.
+     */
+    private void syncArenaKit(Player player) {
+        Plugin duckyPvp = Bukkit.getPluginManager().getPlugin("DuckyPVP");
+        if (duckyPvp == null || !duckyPvp.isEnabled() || !player.isOnline()) return;
+        try {
+            duckyPvp.getClass().getMethod("syncArenaKit", Player.class).invoke(duckyPvp, player);
+        } catch (NoSuchMethodException ignored) {
+            // Older DuckyPVP: the kit is applied on the next arena entry instead.
+        } catch (ReflectiveOperationException | RuntimeException exception) {
+            plugin.getLogger().warning("Could not sync DuckyPVP kit for " + player.getName() + ": " + exception.getMessage());
+        }
+    }
+
+    private static boolean balanceChanged(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof EconomyService.BalanceChangedException) return true;
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private static String rootMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) current = current.getCause();
+        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 
     private void installBypasses(Player player) {
@@ -419,8 +551,24 @@ public final class AdminModeService {
     }
 
     private void saveData(UUID uuid, YamlConfiguration data) {
-        try { data.save(profileFile(uuid)); }
-        catch (IOException exception) { throw new IllegalStateException("Failed to save Abuse Mode profile for " + uuid, exception); }
+        // Write to a temp file and move it into place so a crash mid-write can't corrupt the profile.
+        Path target = profileFile(uuid).toPath();
+        try {
+            Files.createDirectories(target.getParent());
+            Path temp = Files.createTempFile(target.getParent(), uuid + "-", ".tmp");
+            try {
+                Files.writeString(temp, data.saveToString(), StandardCharsets.UTF_8);
+                try {
+                    Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+                } catch (AtomicMoveNotSupportedException exception) {
+                    Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally {
+                Files.deleteIfExists(temp);
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to save Abuse Mode profile for " + uuid, exception);
+        }
     }
 
     private File profileFile(UUID uuid) {
@@ -430,6 +578,4 @@ public final class AdminModeService {
     private static String color(String text) {
         return text.replace('&', '§');
     }
-
-    private record Balances(BigDecimal money, BigDecimal ducks) {}
 }
