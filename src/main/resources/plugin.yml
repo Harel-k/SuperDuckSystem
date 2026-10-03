@@ -26,7 +26,7 @@ commands:
   rtp:
     description: Teleport to a random safe location in the survival world
     usage: /rtp
-    aliases: [sdsrtp]
+    aliases: [sdsrtp, wild]
     permission: superduck.rtp
   balance:
     description: View your money balance
