@@ -30,4 +30,18 @@ public final class LuckPermsRankService implements RankService {
         String group = user.getPrimaryGroup();
         return group == null || group.isBlank() ? "default" : group.toLowerCase();
     }
+
+    @Override
+    public String prefix(Player player) {
+        User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+        String prefix = user == null ? null : user.getCachedData().getMetaData().getPrefix();
+        return prefix == null ? "" : prefix;
+    }
+
+    @Override
+    public String suffix(Player player) {
+        User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+        String suffix = user == null ? null : user.getCachedData().getMetaData().getSuffix();
+        return suffix == null ? "" : suffix;
+    }
 }

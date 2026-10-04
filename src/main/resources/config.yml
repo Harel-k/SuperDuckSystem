@@ -144,3 +144,8 @@ rank-perks:
 
 messages:
   prefix: "<aqua><bold>%server_name%</bold></aqua> <dark_gray>»</dark_gray> "
+
+# Chat format with LuckPerms rank prefixes/suffixes (& color codes). %message% is the player's text.
+chat-format:
+  enabled: true
+  format: "%prefix%%name%%suffix% &8» &f%message%"

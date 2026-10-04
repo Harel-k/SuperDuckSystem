@@ -11,6 +11,7 @@ import com.qducks.superducksystem.integration.IntegrationManager;
 import com.qducks.superducksystem.item.CustomItemService;
 import com.qducks.superducksystem.module.ModuleManager;
 import com.qducks.superducksystem.player.PlayerProfileListener;
+import com.qducks.superducksystem.rank.ChatFormatListener;
 import com.qducks.superducksystem.rank.RankPerkListener;
 import com.qducks.superducksystem.rank.RankPerkService;
 import com.qducks.superducksystem.recovery.ItemRecoveryService;
@@ -70,6 +71,7 @@ public final class SuperDuckSystem extends JavaPlugin {
         getServer().getPluginManager().registerEvents(signInputService, this);
         getServer().getPluginManager().registerEvents(recoveryService, this);
         getServer().getPluginManager().registerEvents(new RankPerkListener(rankPerkService), this);
+        getServer().getPluginManager().registerEvents(new ChatFormatListener(this), this);
         rankPerkService.reloadOnlinePlayers();
 
         PluginCommand command = getCommand("superduck");
