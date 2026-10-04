@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.qducks"
-version = "1.0.0-RC4"
+version = "1.0.0-RC5"
 
 repositories {
     mavenCentral()
