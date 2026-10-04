@@ -6,6 +6,7 @@ import com.qducks.superducksystem.integration.bedrock.FloodgateBedrockService;
 import com.qducks.superducksystem.integration.bedrock.NoopBedrockService;
 import com.qducks.superducksystem.integration.placeholder.SuperDuckExpansion;
 import com.qducks.superducksystem.integration.rank.LuckPermsRankService;
+import com.qducks.superducksystem.integration.rank.SupervisionContext;
 import com.qducks.superducksystem.integration.rank.NoopRankService;
 import com.qducks.superducksystem.integration.rank.RankService;
 import com.qducks.superducksystem.integration.vault.SuperDuckVaultEconomy;
@@ -21,6 +22,7 @@ public final class IntegrationManager {
     private boolean luckPerms;
     private boolean vaultUnlocked;
     private SuperDuckVaultEconomy vaultEconomy;
+    private SupervisionContext supervisionContext;
 
     public IntegrationManager(SuperDuckSystem plugin) {
         this.plugin = plugin;
@@ -44,6 +46,11 @@ public final class IntegrationManager {
         if (luckPerms) {
             try {
                 rankService = new LuckPermsRankService();
+                net.luckperms.api.LuckPerms api = Bukkit.getServicesManager().load(net.luckperms.api.LuckPerms.class);
+                if (api != null && plugin.getConfig().getBoolean("supervision-context.enabled", true)) {
+                    supervisionContext = new SupervisionContext(plugin, api);
+                    supervisionContext.register();
+                }
             } catch (RuntimeException exception) {
                 luckPerms = false;
                 plugin.getLogger().warning("LuckPerms was detected but its API service could not be loaded: " + exception.getMessage());
@@ -73,6 +80,13 @@ public final class IntegrationManager {
     }
 
     public void shutdown() {
+        if (supervisionContext != null) {
+            try {
+                supervisionContext.unregister();
+            } catch (RuntimeException ignored) {
+            }
+            supervisionContext = null;
+        }
         if (vaultEconomy != null) {
             try {
                 Bukkit.getServicesManager().unregister(Economy.class, vaultEconomy);
