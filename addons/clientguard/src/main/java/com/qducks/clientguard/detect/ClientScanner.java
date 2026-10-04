@@ -26,11 +26,14 @@ public final class ClientScanner {
     private final SuperDuckClientGuard plugin;
     private final PolicyEngine policy;
     private final Map<UUID, ScanSession> active = new ConcurrentHashMap<>();
+    private final ScanBlockJournal journal;
     private volatile List<HackDefinition> definitions = List.of();
 
     public ClientScanner(SuperDuckClientGuard plugin, PolicyEngine policy) {
         this.plugin = plugin;
         this.policy = policy;
+        this.journal = new ScanBlockJournal(plugin);
+        journal.restoreLeftovers();
         reloadDefinitions();
     }
 
@@ -70,6 +73,24 @@ public final class ClientScanner {
 
     public boolean isChecking(UUID playerId) {
         return active.containsKey(playerId);
+    }
+
+    /** True if the location is the temporary sign of this player's running scan. */
+    public boolean isScanSign(UUID playerId, Location location) {
+        ScanSession session = active.get(playerId);
+        Location sign = session == null ? null : session.signLocation;
+        return sign != null && location != null && sign.getWorld().equals(location.getWorld())
+                && sign.getBlockX() == location.getBlockX()
+                && sign.getBlockY() == location.getBlockY()
+                && sign.getBlockZ() == location.getBlockZ();
+    }
+
+    /** Stops a player's scan (e.g. on quit) and restores its temporary blocks right away. */
+    public void cancel(UUID playerId) {
+        ScanSession session = active.remove(playerId);
+        if (session == null) return;
+        if (session.timeoutTask != null) session.timeoutTask.cancel();
+        restoreCurrentSign(session);
     }
 
     public void handleResponse(Player player, String[] lines) {
@@ -134,13 +155,22 @@ public final class ClientScanner {
         Location belowLocation = signLocation.clone().subtract(0, 1, 0);
         Block belowBlock = belowLocation.getBlock();
         boolean barrierPlaced = belowBlock.getType().isAir();
-        if (barrierPlaced) belowBlock.setType(Material.BARRIER, false);
+        // Journal the originals before touching the world, so a crash can't leave these blocks behind.
+        if (barrierPlaced) {
+            journal.record(belowLocation, belowBlock.getBlockData());
+            belowBlock.setType(Material.BARRIER, false);
+        }
+        journal.record(signLocation, block.getBlockData());
 
         block.setType(Material.OAK_SIGN, false);
         BlockState fresh = block.getState();
         if (!(fresh instanceof Sign sign)) {
             originalState.update(true, false);
-            if (barrierPlaced) belowBlock.setType(Material.AIR, false);
+            journal.clear(signLocation);
+            if (barrierPlaced) {
+                belowBlock.setType(Material.AIR, false);
+                journal.clear(belowLocation);
+            }
             active.remove(player.getUniqueId());
             return;
         }
@@ -244,12 +274,15 @@ public final class ClientScanner {
         if (location == null) return;
         try {
             if (session.originalState != null) session.originalState.update(true, false);
+            journal.clear(location);
         } catch (Exception exception) {
+            // Left in the journal, so it is retried on the next startup.
             plugin.getLogger().warning("ClientGuard sign restore failed: " + exception.getMessage());
         }
         if (session.barrierPlaced && session.barrierLocation != null) {
             try {
                 session.barrierLocation.getBlock().setType(Material.AIR, false);
+                journal.clear(session.barrierLocation);
             } catch (Exception exception) {
                 plugin.getLogger().warning("ClientGuard barrier restore failed: " + exception.getMessage());
             }

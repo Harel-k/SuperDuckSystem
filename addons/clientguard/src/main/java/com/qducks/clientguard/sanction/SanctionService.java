@@ -2,10 +2,12 @@ package com.qducks.clientguard.sanction;
 
 import com.qducks.clientguard.SuperDuckClientGuard;
 import com.qducks.clientguard.detect.HackDefinition;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -42,19 +44,24 @@ public final class SanctionService {
         List<String> blockers = new ArrayList<>();
         if (!duckyPvp.ready()) blockers.add(duckyPvp.blocker());
         if (!homes.ready()) blockers.add(homes.blocker());
-
-        String command = plugin.getConfig().getString("enforcement.hard-cheat-tempban-command", "").trim();
-        if (command.isEmpty()) {
-            blockers.add("No hard-cheat tempban command is configured");
-        } else {
-            String root = command.startsWith("/") ? command.substring(1) : command;
-            int space = root.indexOf(' ');
-            if (space >= 0) root = root.substring(0, space);
-            if (Bukkit.getPluginCommand(root) == null) {
-                blockers.add("The configured tempban command '/" + root + "' is not registered");
-            }
+        if (plugin.getConfig().getInt("enforcement.hard-cheat-ban-days", 14) <= 0) {
+            blockers.add("enforcement.hard-cheat-ban-days must be greater than 0");
         }
         return blockers;
+    }
+
+    /**
+     * Adds a temporary ban to the server ban list without kicking yet, and verifies it is in place.
+     * The server ban list is what /tempban and /unban (ModerationPlusPlus) use too, so staff can lift it.
+     */
+    public boolean banPlayer(Player player, int days, String reason) {
+        try {
+            player.ban(reason, Duration.ofDays(Math.max(1, days)), "ClientGuard", false);
+        } catch (RuntimeException exception) {
+            plugin.getLogger().severe("ClientGuard could not ban " + player.getName() + ": " + exception.getMessage());
+            return false;
+        }
+        return player.isBanned();
     }
 
     public boolean ready() {
@@ -126,8 +133,19 @@ public final class SanctionService {
             return;
         }
 
+        // Ban first (without kicking), so a failure later can never leave a wiped but unbanned player.
+        String mods = detections.stream().map(HackDefinition::displayName).collect(Collectors.joining(", "));
+        int days = plugin.getConfig().getInt("enforcement.hard-cheat-ban-days", 14);
+        String reason = plugin.getConfig().getString("enforcement.hard-cheat-ban-reason",
+                "Client modifications are not allowed ({mods})").replace("{mods}", mods);
+        if (!banPlayer(player, days, reason)) {
+            failBeforeWipe(player, "the ban could not be applied, so nothing was wiped; snapshot kept at "
+                    + snapshot.getAbsolutePath());
+            return;
+        }
+
         if (!duckyPvp.discardBackup(uuid)) {
-            failBeforeWipe(player, "DuckyPVP backup could not be safely discarded; snapshot kept");
+            failAfterSnapshot(player, snapshot, "DuckyPVP backup could not be safely discarded; nothing was wiped");
             return;
         }
 
@@ -171,36 +189,20 @@ public final class SanctionService {
                         return;
                     }
 
-                    dispatchHardBan(player, detections, snapshot);
+                    completeSanction(player, snapshot);
                 })
         );
     }
 
-    private void dispatchHardBan(Player player, List<HackDefinition> detections, File snapshot) {
-        String mods = detections.stream().map(HackDefinition::displayName).collect(Collectors.joining(", "));
-        String command = plugin.getConfig().getString(
-                "enforcement.hard-cheat-tempban-command",
-                "tempban {player} 14d Client modifications are not allowed ({mods})"
-        )
-                .replace("{player}", player.getName())
-                .replace("{uuid}", player.getUniqueId().toString())
-                .replace("{mods}", mods);
-
-        if (command.startsWith("/")) command = command.substring(1);
-        boolean accepted = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-        if (!accepted) {
-            alert("<red><bold>CRITICAL:</bold></red> wipe completed for <yellow>" + player.getName()
-                    + "</yellow> but the tempban command was rejected. Recovery snapshot: <white>"
-                    + escape(snapshot.getAbsolutePath()) + "</white>");
-            lock.unlock(player);
-            active.remove(player.getUniqueId());
-            return;
-        }
-
+    private void completeSanction(Player player, File snapshot) {
         plugin.getLogger().warning("ClientGuard hard sanction completed for " + player.getName()
                 + "; snapshot=" + snapshot.getAbsolutePath());
         active.remove(player.getUniqueId());
-        // Keep the player frozen until the tempban command disconnects them.
+        lock.unlock(player);
+        if (player.isOnline()) {
+            player.kick(Component.text(plugin.getConfig().getString("enforcement.hard-cheat-kick-message",
+                    "You have been banned: client modifications are not allowed on QDucks SMP.")));
+        }
     }
 
     private void failBeforeWipe(Player player, String reason) {
@@ -210,12 +212,16 @@ public final class SanctionService {
         active.remove(player.getUniqueId());
     }
 
+    /** A step after the ban failed. The player stays banned and is disconnected; staff restore from the snapshot. */
     private void failAfterSnapshot(Player player, File snapshot, String reason) {
         alert("<red><bold>ClientGuard sanction needs staff attention:</bold></red> <yellow>"
                 + player.getName() + "</yellow><gray>: " + escape(reason)
-                + ". Snapshot: " + escape(snapshot.getAbsolutePath()) + "</gray>");
+                + ". The player stays banned. Snapshot: " + escape(snapshot.getAbsolutePath()) + "</gray>");
         lock.unlock(player);
         active.remove(player.getUniqueId());
+        if (player.isOnline()) {
+            player.kick(Component.text("You have been banned from QDucks SMP. Contact staff if you believe this is a mistake."));
+        }
     }
 
     private void alert(String message) {

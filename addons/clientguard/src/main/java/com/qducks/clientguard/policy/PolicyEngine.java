@@ -56,11 +56,17 @@ public final class PolicyEngine {
             return;
         }
 
+        // Monitor mode must not change a player's disciplinary record.
+        if (!plugin.getConfig().getBoolean("enforcement.enabled", false)) {
+            int wouldBe = strikes.getFreecamStrikes(player.getUniqueId()) + 1;
+            alert("<yellow>Freecam confirmed:</yellow> <white>" + player.getName()
+                    + "</white> <gray>(monitor mode: would be strike " + wouldBe + "; nothing recorded)</gray>");
+            return;
+        }
+
         int strike = strikes.incrementFreecam(player.getUniqueId());
         alert("<yellow>Freecam confirmed:</yellow> <white>" + player.getName()
                 + "</white> <gray>(strike " + strike + ")</gray>");
-
-        if (!plugin.getConfig().getBoolean("enforcement.enabled", false)) return;
 
         int warnings = Math.max(1, plugin.getConfig().getInt("enforcement.freecam-warnings-before-ban", 2));
         if (strike <= warnings) {
@@ -73,10 +79,13 @@ public final class PolicyEngine {
             return;
         }
 
-        String command = plugin.getConfig().getString(
-                "enforcement.freecam-tempban-command",
-                "tempban {player} 3d Freecam is not allowed on QDucks SMP");
-        dispatch(command.replace("{player}", player.getName()));
+        int days = plugin.getConfig().getInt("enforcement.freecam-ban-days", 3);
+        String reason = plugin.getConfig().getString("enforcement.freecam-ban-reason", "Freecam is not allowed on QDucks SMP");
+        if (!sanctions.banPlayer(player, days, reason)) {
+            alert("<red>Freecam ban for <white>" + player.getName() + "</white> could not be applied. Check console.</red>");
+            return;
+        }
+        player.kick(Component.text("You have been banned for " + days + " days: " + reason));
     }
 
     public void onQuit(UUID uuid) {
@@ -89,11 +98,6 @@ public final class PolicyEngine {
 
     public void forgive(Player player) {
         strikes.clear(player.getUniqueId());
-    }
-
-    private void dispatch(String command) {
-        String normalized = command.startsWith("/") ? command.substring(1) : command;
-        Bukkit.dispatchCommand(Bukkit.getConsoleSender(), normalized);
     }
 
     private void alert(String miniMessage) {

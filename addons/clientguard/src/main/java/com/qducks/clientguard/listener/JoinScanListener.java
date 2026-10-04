@@ -32,5 +32,7 @@ public final class JoinScanListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         policy.onQuit(event.getPlayer().getUniqueId());
+        // Restore the temporary scan blocks now instead of waiting for the scan timeout.
+        scanner.cancel(event.getPlayer().getUniqueId());
     }
 }

@@ -16,7 +16,8 @@ public final class SignResponseListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = false)
     public void onSignChange(SignChangeEvent event) {
-        if (!scanner.isChecking(event.getPlayer().getUniqueId())) return;
+        // Only the scan's own temporary sign counts; other sign edits are left alone.
+        if (!scanner.isScanSign(event.getPlayer().getUniqueId(), event.getBlock().getLocation())) return;
         event.setCancelled(true);
 
         String[] lines = new String[4];

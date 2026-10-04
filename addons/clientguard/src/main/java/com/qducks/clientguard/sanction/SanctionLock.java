@@ -17,7 +17,8 @@ public final class SanctionLock {
 
     public void unlock(Player player) {
         Boolean previous = previousInvulnerable.remove(player.getUniqueId());
-        if (previous != null && player.isOnline()) {
+        // Also applied during PlayerQuitEvent (before the player's data is saved), so no isOnline() check.
+        if (previous != null) {
             player.setInvulnerable(previous);
         }
     }

@@ -12,11 +12,14 @@ scan:
 # snapshot path have passed live validation.
 enforcement:
   enabled: false
+  # Bans go straight onto the server ban list (the same list /tempban and /unban use),
+  # and a hard-cheat ban is applied and verified BEFORE any wipe starts.
   hard-cheat-ban-days: 14
+  hard-cheat-ban-reason: "Client modifications are not allowed ({mods})"
+  hard-cheat-kick-message: "You have been banned: client modifications are not allowed on QDucks SMP."
   freecam-ban-days: 3
+  freecam-ban-reason: "Freecam is not allowed on QDucks SMP"
   freecam-warnings-before-ban: 2
-  hard-cheat-tempban-command: "tempban {player} 14d Client modifications are not allowed ({mods})"
-  freecam-tempban-command: "tempban {player} 3d Freecam is not allowed on QDucks SMP"
   freecam-warning-1: "Freecam is not allowed on QDucks SMP. Remove it before reconnecting."
   freecam-warning-2: "FINAL WARNING: remove Freecam before reconnecting or you will receive a 3-day ban."
 
